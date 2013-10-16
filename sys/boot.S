@@ -1,0 +1,92 @@
+.text
+.code32
+
+.data
+.align 4096
+pml4:
+	.quad pdpt + 0x3
+	.rept 511
+	.quad 0
+	.endr
+pdpt:
+	.quad pd + 0x3
+	.rept 511
+	.quad 0
+	.endr
+pd:
+	index = 0
+	.rept 512
+	.quad (index << 21) | 0x83
+	index = index + 1
+	.endr
+
+gdt_desc:
+	.short gdt_end - gdt - 1
+	.long gdt
+
+.align 8
+gdt:
+//NULL descriptor
+.word 0 //limit (low)
+.word 0 //base (low)
+.byte 0 //base (middle)
+.byte 0 //access
+.byte 0 //granularity
+.byte 0 //base (high)
+//Code descriptor
+.word 0 //limit (low)
+.word 0 //base (low)
+.byte 0 //base (middle)
+.byte 0x98 //access, present, not system, code - execute only
+.byte 0x20 //granularity, long mode
+.byte 0 //base (high)
+//Data descriptor
+.word 0 //limit (low)
+.word 0 //base (low)
+.byte 0 //base (middle)
+.byte 0x90 //access, present, not system
+.byte 0 //granularity
+.byte 0 //base (high)
+gdt_end = .
+
+.globl _fpu_control_word
+_fpu_control_word:
+.word 0x37a //enable both division by zero and invalid operand exceptions
+
+.bss
+.align 16
+. = . + 16 * 1024
+boot_stack_top = .
+
+.text
+.globl start32
+start32:
+	mov %ebx, %edi
+	//enable PAE and SSE
+	mov $0x628, %eax
+	mov %eax, %cr4
+	//point to the pml4
+        lea pml4, %eax
+        mov %eax, %cr3
+        //paging is setup, but not enabled
+        //set long mode
+        mov $0xC0000080, %ecx //EFER MSR
+	mov $0x900, %eax //NXE + LME
+        wrmsr
+
+	mov $0x80010023, %eax //set page bit and FPU
+	mov %eax, %cr0
+
+        fninit // initial fpu state
+        fldcw _fpu_control_word
+
+	lgdt gdt_desc
+	ljmp $8, $start64
+.code64
+start64:
+	.cfi_startproc simple
+	.cfi_def_cfa %rsp, 0
+	.cfi_undefined %rip
+	lea boot_stack_top, %rsp
+	jmp kmain
+	.cfi_endproc
