@@ -18,8 +18,7 @@ struct MultibootInformation {
     uint32_t has_boot_loader_name : 1;
     uint32_t has_apm_table : 1;
     uint32_t has_graphics_table : 1;
-  uint32_t:
-    20;
+    uint32_t reserved : 20;
   };
   uint32_t memory_lower;
   uint32_t memory_higher;
@@ -43,65 +42,26 @@ struct MultibootInformation {
   uint32_t vbe_interface_length;
 };
 
-extern MultibootInformation saved_mbi;
-
-class MultibootMemoryRegion {
-  uint32_t size_;
-  uint64_t base_address_;
-  uint64_t length_;
-  uint32_t type_;
+struct MultibootMemoryRegion {
+  uint32_t size;
+  uint64_t base_address;
+  uint64_t length;
+  uint32_t type;
   static const uint32_t RAM_TYPE = 1;
+  static const uint32_t RESERVED_UNUSABLE = 2;
+  static const uint32_t ACPI_RECLAIMABLE = 3;
+  static const uint32_t ACPI_NVS = 4;
+  static const uint32_t BAD_MEMORY = 5;
 
-public:
-  inline uint64_t begin() const noexcept {
-    return base_address_;
-  }
-  inline uint64_t end() const noexcept {
-    return base_address_ + length_;
-  }
-  inline uint64_t length() const noexcept {
-    return length_;
-  }
-
-  inline bool isRAM() const noexcept { return type_ == RAM_TYPE; }
-
-  inline bool intersects(uintptr_t addr) const noexcept {
-    return addr > base_address_ && addr < base_address_ + length_;
-  }
-
-  inline void trim_below(uintptr_t addr) noexcept {
-    if (intersects(addr)) {
-      auto delta = addr - base_address_;
-      base_address_ += delta;
-      length_ -= delta;
+  template <typename F>
+  static void for_each_mmregion(const void *buffer, uint32_t size, F f) {
+    auto end_addr = static_cast<const char *>(buffer) + size;
+    auto p = static_cast<const char *>(buffer);
+    while (p < end_addr) {
+      auto region = reinterpret_cast<const MultibootMemoryRegion *>(p);
+      f(*region);
+      p += region->size + 4;
     }
   }
-
-  inline void trim_above(uintptr_t addr) noexcept {
-    if (intersects(addr)) {
-      auto delta = base_address_ + length_ - addr;
-      length_ -= delta;
-    }
-  }
-
-  static void for_each_mmregion(char *buffer, uint32_t size,
-                                void (*f)(MultibootMemoryRegion mmregion)) {
-    auto p = buffer;
-    while (p < buffer + size) {
-      auto region = reinterpret_cast<MultibootMemoryRegion *>(p);
-      if (region->isRAM()) {
-        f(*region);
-      }
-      p += region->size_ + 4;
-    }
-  }
-
 } __attribute__((packed));
-
-class MultibootModule {
-public:
-  uint32_t start_address;
-  uint32_t end_address;
-  char string[0];
-};
 }

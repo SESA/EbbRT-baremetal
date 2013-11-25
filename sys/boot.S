@@ -88,5 +88,5 @@ start64:
 	.cfi_def_cfa %rsp, 0
 	.cfi_undefined %rip
 	lea boot_stack_top, %rsp
-	jmp kmain
+	call kmain
 	.cfi_endproc

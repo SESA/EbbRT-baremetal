@@ -35,6 +35,10 @@ SECTIONS
                           *(.gcc_except_table .gcc_except_table.*)
         }
 
+        .note : ALIGN(16) {
+                *(.note*)
+        }
+
         .ctors BLOCK(4K) : ALIGN(4K) {
                start_ctors = .;
                *(SORT_BY_INIT_PRIORITY(.ctors.*))
@@ -45,10 +49,6 @@ SECTIONS
                start_dtors = .;
                *(SORT_BY_INIT_PRIORITY(.dtors.*))
                end_dtors = .;
-        }
-
-        .note : ALIGN(16) {
-              *(.note.gnu.build-id)
         }
 
         .eh_frame ALIGN(4) : ONLY_IF_RW {
@@ -62,9 +62,31 @@ SECTIONS
 		*(.data.*)
 	}
 
+        .tdata : ALIGN(64)
+        {
+                tls_start = ABSOLUTE(.);
+                *(.tdata)
+                *(.tdata.*)
+                *(.gnu.linkonce.td.*)
+        }
+
+        .tbss :
+        {
+                *(.tbss)
+                *(.tbss.*)
+                *(.gnu.linkonce.tb.*)
+                . = ALIGN(64);
+                tls_end = ABSOLUTE(.);
+        }
+
+        . = ALIGN(64);
+        tcb0 = .;
+        . = . + (tls_end - tls_start) + 8;
+
 	.bss BLOCK(4K) : ALIGN(4K)
 	{
 		*(COMMON)
+                *(.bss)
 		*(.bss.*)
 	}
 

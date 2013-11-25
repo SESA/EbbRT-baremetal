@@ -1,0 +1,2 @@
+struct bootmem_range {
+}

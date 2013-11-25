@@ -34,21 +34,29 @@ q-build-s = $(call quiet, $(build-s), AS $@)
 	$(q-build-s)
 
 objects = sys/acpi.o
-objects += sys/apic.o
+# objects += sys/apic.o
 objects += sys/boot.o
 objects += sys/cpu.o
-objects += sys/cpuid.o
+# objects += sys/cpuid.o
 objects += sys/debug.o
-objects += sys/event.o
-objects += sys/idt.o
-objects += sys/isr.o
+objects += sys/e820.o
+objects += sys/early_page_allocator.o
+# objects += sys/event.o
+# objects += sys/idt.o
+# objects += sys/isr.o
 objects += sys/main.o
-objects += sys/multiboot.o
-objects += sys/pci.o
-objects += sys/pmem.o
+objects += sys/mem_map.o
+#objects += sys/multiboot.o
+objects += sys/numa.o
+objects += sys/page_allocator.o
+# objects += sys/pci.o
+#objects += sys/pmem.o
 #objects += sys/power.o
+objects += sys/slab_allocator.o
+objects += sys/tls.o
+objects += sys/trans.o
 objects += sys/UART_8250.o
-objects += sys/virtio-net.o
+# objects += sys/virtio-net.o
 objects += sys/vmem.o
 objects += $(acpi_objects)
 
@@ -77,7 +85,7 @@ ebbrt.elf.stripped: ebbrt.elf
 # ebbrt.elf32: ebbrt.elf
 # 	$(call quiet,objcopy -O elf32-i386 $< $@, OBJCOPY $@)
 
-LDFLAGS := -Wl,-n,-z,max-page-size=0x1000
+LDFLAGS := -Wl,-n,-z,max-page-size=0x1000 $(optflags)
 ebbrt.elf: $(objects) sys/ebbrt.ld $(runtime_objects)
 	$(call quiet, $(CXX) $(LDFLAGS) -o $@ $(objects) \
 		-T $(src)/sys/ebbrt.ld $(runtime_objects), LD $@)

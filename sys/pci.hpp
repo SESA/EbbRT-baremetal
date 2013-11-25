@@ -39,6 +39,19 @@ class device {
   static const constexpr uint16_t COMMAND_BUS_MASTER = 1 << 2;
   static const constexpr uint16_t COMMAND_INT_DISABLE = 1 << 10;
 
+  uint8_t bus_;
+  uint8_t device_;
+  uint8_t func_;
+  bool msix_enabled_;
+
+  uint8_t read8(uint8_t offset) const;
+  uint16_t read16(uint8_t offset) const;
+  uint32_t read32(uint8_t offset) const;
+  void write8(uint8_t offset, uint8_t val);
+  void write16(uint8_t offset, uint16_t val);
+  void write32(uint8_t offset, uint32_t val);
+
+public:
   static const constexpr uint8_t CAP_PM = 0x01;
   static const constexpr uint8_t CAP_AGP = 0x02;
   static const constexpr uint8_t CAP_VPD = 0x03;
@@ -59,19 +72,6 @@ class device {
   static const constexpr uint8_t CAP_SATA = 0x12;
   static const constexpr uint8_t CAP_PCIAF = 0x13;
 
-  uint8_t bus_;
-  uint8_t device_;
-  uint8_t func_;
-  bool msix_enabled_;
-
-  uint8_t read8(uint8_t offset) const;
-  uint16_t read16(uint8_t offset) const;
-  uint32_t read32(uint8_t offset) const;
-  void write8(uint8_t offset, uint8_t val);
-  void write16(uint8_t offset, uint16_t val);
-  void write32(uint8_t offset, uint32_t val);
-
-public:
   device(uint8_t bus, uint8_t device, uint8_t func);
 
   uint16_t get_vendor_id() const;
@@ -87,6 +87,8 @@ public:
   uint8_t find_capability(uint8_t id) const;
   void enable_msix(uint8_t pointer);
   bool is_msix_enabled() const;
+  uint32_t msix_table_offset(uint8_t ptr) const;
+  uint8_t msix_table_BIR(uint8_t ptr) const;
   uint32_t get_bar(uint8_t bar) const;
 };
 

@@ -16,13 +16,4 @@ void kprintf(const char *__restrict format, ...) {
   kvprintf(format, ap);
   va_end(ap);
 }
-void kabort() {
-  while (true) {
-    asm volatile("cli;"
-                 "hlt;"
-                 :
-                 :
-                 : "memory");
-  }
-}
 }

@@ -168,7 +168,9 @@ void device::set_bus_master(bool master) {
 uint32_t device::get_bar(uint8_t bar) const {
   return read32(BAR_OFFSET + bar * 4);
 }
-uint8_t device::get_capabilities() const { return read8(CAPABILITIES_PTR_ADDR); }
+uint8_t device::get_capabilities() const {
+  return read8(CAPABILITIES_PTR_ADDR);
+}
 uint8_t device::find_capability(uint8_t id) const {
   uint8_t ptr = get_capabilities() & ~0x3;
   while (ptr) {
@@ -188,5 +190,13 @@ void device::enable_msix(uint8_t ptr) {
 }
 
 bool device::is_msix_enabled() const { return msix_enabled_; }
+
+uint8_t device::msix_table_BIR(uint8_t ptr) const {
+  return read32(ptr + 4) & 0x7;
+}
+
+uint32_t device::msix_table_offset(uint8_t ptr) const {
+  return read32(ptr + 4) & ~0x7;
+}
 }
 }

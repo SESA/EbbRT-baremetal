@@ -8,9 +8,11 @@
 #include <errno.h>
 
 #include <sys/debug.hpp>
+#include <sys/general_purpose_allocator.hpp>
 #include <sys/gthread.hpp>
-#include <sys/pmem.hpp>
 #include <sys/vmem.hpp>
+
+using namespace ebbrt;
 
 extern "C" int ebbrt_newlib_exit(int val) {
   UNIMPLEMENTED();
@@ -92,27 +94,32 @@ extern "C" int ebbrt_newlib_write(int file, char *ptr, int len) {
   return 0;
 }
 
-uint64_t heap_offset;
-uint64_t heap_allocated_offset;
+extern "C" void *ebbrt_newlib_malloc(size_t size) {
+  return gp_allocator->Alloc(size);
+}
+
+extern "C" void ebbrt_newlib_free(void *ptr) {
+  gp_allocator->Free(ptr);
+}
+
+extern "C" void *ebbrt_newlib_realloc(void *, size_t) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+extern "C" void *ebbrt_newlib_calloc(size_t, size_t) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
+
+extern "C" void *ebbrt_newlib_memalign(size_t, size_t) {
+  UNIMPLEMENTED();
+  return nullptr;
+}
 
 extern "C" caddr_t ebbrt_newlib_sbrk(int incr) {
-  constexpr uint64_t HEAP_START = 0xFFFF800000000000;
-  // Allocate 2mb page chunks
-  constexpr uint64_t HEAP_ALLOCATION_SIZE = 1 << 21;
-  while (heap_offset + incr > heap_allocated_offset) {
-    auto pmem = ebbrt::pmem::allocate_page(HEAP_ALLOCATION_SIZE);
-    if (pmem == 0) {
-      errno = ENOMEM;
-      return reinterpret_cast<caddr_t>(-1);
-    }
-    ebbrt::vmem::map(HEAP_START + heap_allocated_offset, pmem,
-                     HEAP_ALLOCATION_SIZE);
-    heap_allocated_offset += HEAP_ALLOCATION_SIZE;
-  }
-
-  auto ret = HEAP_START + heap_offset;
-  heap_offset += incr;
-  return reinterpret_cast<caddr_t>(ret);
+  UNIMPLEMENTED();
+  return 0;
 }
 
 extern "C" int ebbrt_newlib_gettimeofday(struct timeval *p, void *z) {
@@ -139,9 +146,7 @@ extern "C" int ebbrt_newlib_lock_try_acquire_recursive(_LOCK_RECURSIVE_T *) {
 }
 
 extern "C" void ebbrt_newlib_lock_acquire_recursive(_LOCK_RECURSIVE_T *lock) {
-  if (ebbrt_gthread_active_p()) {
-    ebbrt_gthread_recursive_mutex_lock(lock);
-  }
+  UNIMPLEMENTED();
 }
 
 extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T *) {
@@ -149,7 +154,5 @@ extern "C" void ebbrt_newlib_lock_release(_LOCK_RECURSIVE_T *) {
 }
 
 extern "C" void ebbrt_newlib_lock_release_recursive(_LOCK_RECURSIVE_T *lock) {
-  if (ebbrt_gthread_active_p()) {
-    ebbrt_gthread_recursive_mutex_unlock(lock);
-  }
+  UNIMPLEMENTED();
 }
