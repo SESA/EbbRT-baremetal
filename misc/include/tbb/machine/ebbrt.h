@@ -4,6 +4,6 @@
 
 #include <sys/debug.hpp>
 
-int __TBB_Yield() {
+static inline int __TBB_Yield() {
   UNIMPLEMENTED();
 }

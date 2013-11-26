@@ -1,8 +1,6 @@
 #include <cstdarg>
 #include <cstring>
 
-#include <tbb/concurrent_unordered_map.h>
-
 #include <sys/acpi.hpp>
 // #include <sys/apic.hpp>
 #include <sys/console.hpp>
@@ -11,10 +9,12 @@
 #include <sys/debug.hpp>
 #include <sys/e820.hpp>
 #include <sys/early_page_allocator.hpp>
+#include <sys/ebb_allocator.hpp>
 // #include <sys/event.hpp>
 #include <sys/general_purpose_allocator.hpp>
 // #include <sys/gthread.hpp>
 // #include <sys/idt.hpp>
+#include <sys/local_id_map.hpp>
 #include <sys/mem_map.hpp>
 #include <sys/multiboot.hpp>
 #include <sys/numa.hpp>
@@ -28,42 +28,12 @@
 #include <sys/trans.hpp>
 #include <sys/vmem.hpp>
 
-// namespace {
-// bool ebbrt_initialized = false;
-
-// __attribute__((constructor(EBBRT_PRIORITY))) void ebbrt_initialize_func() {
-//   ebbrt_initialized = true;
-// }
-
-// bool event_initialized = false;
-// __attribute__((constructor(EVENT_PRIORITY))) void
-// event_initialize_func() {
-//   event_initialized = true;
-// }
-
-// int last_index;
-// }
-
-// extern void (*start_ctors[])();
-// extern void (*end_ctors[])();
-
-void kmain_cont() {
-  // for (int i = last_index + 1; i < (end_ctors - start_ctors); ++i) {
-  //   start_ctors[i]();
-  //   if (ebbrt_initialized) {
-  //     break;
-  //   }
-  // }
-  // acpi::init();
-  // pci::init();
-  // kprintf("Ebbrt\n");
-}
+using namespace ebbrt;
 
 namespace {
 bool started_once = false;
 }
 
-using namespace ebbrt;
 extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   console::init();
 
@@ -114,33 +84,18 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   PageAllocator::Init();
   slab_init();
   gp_type::Init();
+  LocalIdMap::Init();
+  EbbAllocator::Init();
 
-  auto iptr = new uintptr_t();
-  *reinterpret_cast<volatile uintptr_t *>(iptr);
-  delete iptr;
-
-  tbb::concurrent_unordered_map<
-      int, int, tbb::tbb_hash<int>, std::equal_to<int>,
-      std::allocator<std::pair<const int, int> > > my_map;
-
-  my_map[3] = 5;
-
-  kprintf("%d\n", my_map[3]);
+  auto allocator = SlabAllocator::Construct(16);
+  auto p = allocator->Alloc();
+  kprintf("Allocated %p\n", p);
+  auto p2 = allocator->Alloc();
+  kprintf("Allocated %p\n", p2);
+  allocator->Free(p);
+  allocator->Free(p2);
 
   kprintf("Finished\n");
   while (true)
     ;
-  // for (int i = 0; i < (end_ctors - start_ctors); ++i) {
-  //   last_index = i;
-  //   start_ctors[i]();
-  //   if (event_initialized) {
-  //     break;
-  //   }
-  // }
-  // pmem::init();
-  // vmem::init();
-  // idt::init();
-  // cpu::init();
-  // gthread::init();
-  // event::init(kmain_cont);
 }

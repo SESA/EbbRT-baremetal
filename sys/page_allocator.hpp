@@ -51,7 +51,7 @@ private:
 
 public:
   static void Init();
-  static PageAllocator* HandleFault(EbbId id);
+  static PageAllocator& HandleFault(EbbId id);
 
   PageAllocator(nid_t nid);
 

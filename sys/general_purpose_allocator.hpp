@@ -63,12 +63,12 @@ public:
     c(allocator_roots);
   }
 
-  static general_purpose_allocator<sizes_in...> *HandleFault(EbbId id) {
+  static general_purpose_allocator<sizes_in...> &HandleFault(EbbId id) {
     if (reps[my_cpu_index] == nullptr) {
       reps[my_cpu_index] = new general_purpose_allocator<sizes_in...>();
     }
 
-    auto allocator = reps[my_cpu_index];
+    auto& allocator = *reps[my_cpu_index];
     cache_ref(id, allocator);
     return allocator;
   }

@@ -41,9 +41,11 @@ objects += sys/cpu.o
 objects += sys/debug.o
 objects += sys/e820.o
 objects += sys/early_page_allocator.o
+objects += sys/ebb_allocator.o
 # objects += sys/event.o
 # objects += sys/idt.o
 # objects += sys/isr.o
+objects += sys/local_id_map.o
 objects += sys/main.o
 objects += sys/mem_map.o
 #objects += sys/multiboot.o
@@ -59,6 +61,12 @@ objects += sys/UART_8250.o
 # objects += sys/virtio-net.o
 objects += sys/vmem.o
 objects += $(acpi_objects)
+objects += $(tbb_objects)
+
+tbb_sources := $(shell find $(src)/misc/tbb -type f -name '*.cpp')
+tbb_objects = $(patsubst $(src)/%.cpp, %.o, $(tbb_sources))
+
+$(tbb_objects): CPPFLAGS += -iquote $(src)/misc/include
 
 acpi_sources := $(shell find $(src)/misc/acpica/source/components -type f -name '*.c')
 acpi_objects = $(patsubst $(src)/%.c, %.o, $(acpi_sources))

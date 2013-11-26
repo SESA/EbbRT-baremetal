@@ -25,7 +25,7 @@ public:
     auto lref = *reinterpret_cast<T **>(ref_);
     if (lref == nullptr) {
       auto id = (ref_ - LOCAL_TRANS_VMEM_START) / sizeof(LocalEntry);
-      lref = T::HandleFault(id);
+      lref = &(T::HandleFault(id));
     }
     return lref;
   }
@@ -33,12 +33,15 @@ public:
 
 enum : EbbId {
   page_allocator_id,
-  gp_allocator_id
+  gp_allocator_id,
+  local_id_map_id,
+  ebb_allocator_id,
+  FIRST_FREE_ID
 };
 
-template <typename T> inline void cache_ref(EbbId id, T *ref) {
+template <typename T> inline void cache_ref(EbbId id, T& ref) {
   auto le = reinterpret_cast<LocalEntry *>(LOCAL_TRANS_VMEM_START +
                                            sizeof(LocalEntry) * id);
-  le->ref = ref;
+  le->ref = &ref;
 }
 }

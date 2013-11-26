@@ -1,7 +1,9 @@
 #include <boost/container/static_vector.hpp>
 
 #include <sys/debug.hpp>
+#include <sys/ebb_allocator.hpp>
 #include <sys/explicitly_constructed.hpp>
+#include <sys/local_id_map.hpp>
 #include <sys/slab_allocator.hpp>
 #include <sys/page_allocator.hpp>
 
@@ -123,7 +125,7 @@ void *SlabCache::Alloc() {
 retry:
   // first check the free list and return if we have a free object
   if (!object_list_.empty()) {
-    auto& ret = object_list_.front();
+    auto &ret = object_list_.front();
     object_list_.pop_front();
     return ret.addr();
   }
@@ -141,8 +143,8 @@ retry:
 
   // no free object in either list, try to get an object from a partial page
   if (!partial_page_list_.empty()) {
-    auto& page = partial_page_list_.front();
-    auto& page_slab_data = page.data.slab_data;
+    auto &page = partial_page_list_.front();
+    auto &page_slab_data = page.data.slab_data;
     kassert(page_slab_data.used < root_.num_objects_per_slab());
     // if this is the last allocation remove it from the list
     if (page_slab_data.used + 1 == root_.num_objects_per_slab()) {
@@ -153,7 +155,7 @@ retry:
 
     ++page_slab_data.used;
 
-    auto& object = page_slab_data.list->front();
+    auto &object = page_slab_data.list->front();
     page_slab_data.list->pop_front();
     return object.addr();
   }
@@ -167,7 +169,7 @@ void SlabCache::AddSlab(pfn_t pfn) {
 
   page->usage = page::Usage::SLAB_ALLOCATOR;
 
-  auto& page_slab_data = page->data.slab_data;
+  auto &page_slab_data = page->data.slab_data;
   page_slab_data.member_hook.construct();
   page_slab_data.list.construct();
   page_slab_data.used = 0;
@@ -176,13 +178,13 @@ void SlabCache::AddSlab(pfn_t pfn) {
   auto start = pfn_to_addr(pfn);
   auto end = pfn_to_addr(pfn) + root_.num_objects_per_slab() * root_.size;
   for (uintptr_t addr = start; addr < end; addr += root_.size) {
-    //add object to per slab free list
-    auto object = new (reinterpret_cast<void*>(addr)) free_object();
+    // add object to per slab free list
+    auto object = new (reinterpret_cast<void *>(addr)) free_object();
     page_slab_data.list->push_front(*object);
 
     auto addr_page = addr_to_page(addr);
     kassert(addr_page != nullptr);
-    auto& addr_page_slab_data = addr_page->data.slab_data;
+    auto &addr_page_slab_data = addr_page->data.slab_data;
     addr_page_slab_data.cache = this;
   }
 
@@ -207,7 +209,7 @@ void SlabCache::FlushFreeList(size_t amount) {
     auto page = pfn_to_page(pfn);
     kassert(page != nullptr);
 
-    auto& page_slab_data = page->data.slab_data;
+    auto &page_slab_data = page->data.slab_data;
 
     if (page_slab_data.cache != this) {
       auto &allocator = root_.get_cpu_allocator();
@@ -235,18 +237,37 @@ void SlabCache::FlushFreeList(size_t amount) {
   }
 }
 
-void SlabCache::FlushFreeListAll() {
-  FlushFreeList(size_t(-1));
-}
+void SlabCache::FlushFreeListAll() { FlushFreeList(size_t(-1)); }
 
 void SlabCache::ClaimRemoteFreeList() {
-  std::lock_guard<spinlock> lock{remote_.lock};
+  std::lock_guard<spinlock> lock{ remote_.lock };
 
   if (object_list_.empty()) {
     object_list_.swap(remote_.list);
   } else {
     object_list_.splice_after(object_list_.end(), remote_.list);
   }
+}
+
+EbbRef<SlabAllocator> SlabAllocator::Construct(size_t size) {
+  auto id = ebb_allocator->AllocateLocal();
+  auto allocator_root = new SlabAllocatorRoot(size);
+  local_id_map->insert(std::make_pair(id, allocator_root));
+  return EbbRef<SlabAllocator>{ id };
+}
+
+SlabAllocator &SlabAllocator::HandleFault(EbbId id) {
+  SlabAllocatorRoot *allocator_root;
+  {
+    LocalIdMap::const_accessor accessor;
+    auto found = local_id_map->find(accessor, id);
+    kassert(found);
+    allocator_root = boost::any_cast<SlabAllocatorRoot *>(accessor->second);
+  }
+  kassert(allocator_root != nullptr);
+  auto &allocator = allocator_root->get_cpu_allocator();
+  cache_ref(id, allocator);
+  return allocator;
 }
 
 SlabAllocator::SlabAllocator(SlabAllocatorRoot &root)
@@ -310,7 +331,7 @@ void SlabAllocator::FreeRemote(void *p) {
   auto page = addr_to_page(p);
   kassert(page != nullptr);
 
-  auto& page_slab_data = page->data.slab_data;
+  auto &page_slab_data = page->data.slab_data;
   if (page_slab_data.cache != remote_cache_) {
     FlushRemoteList();
     remote_cache_ = page_slab_data.cache;

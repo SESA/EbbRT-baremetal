@@ -56,8 +56,9 @@ void PageAllocator::early_free_page(pfn_t start, size_t order,
   page->data.order = order;
 }
 
-PageAllocator* PageAllocator::HandleFault(EbbId id) {
-  auto allocator = &allocators[my_node()];
+PageAllocator& PageAllocator::HandleFault(EbbId id) {
+  kassert(id == page_allocator_id);
+  auto& allocator = allocators[my_node()];
   cache_ref(id, allocator);
   return allocator;
 }

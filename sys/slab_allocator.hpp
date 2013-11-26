@@ -14,6 +14,7 @@
 #include <sys/page_allocator.hpp>
 #include <sys/slab_object.hpp>
 #include <sys/spinlock.hpp>
+#include <sys/trans.hpp>
 
 namespace ebbrt {
 
@@ -100,6 +101,8 @@ class SlabAllocator : cache_aligned {
   void FlushRemoteList();
 
 public:
+  static EbbRef<SlabAllocator> Construct(size_t size);
+  static SlabAllocator& HandleFault(EbbId id);
   SlabAllocator(SlabAllocatorRoot &root);
   void *operator new(size_t size, nid_t nid);
   void operator delete(void *p);

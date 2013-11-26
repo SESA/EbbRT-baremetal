@@ -45,6 +45,10 @@
     #pragma warning (pop)
 #endif
 
+#if __ebbrt__
+#include <sys/cache_aligned.hpp>
+#endif
+
 #include "cache_aligned_allocator.h"
 #include "tbb_allocator.h"
 #include "spin_rw_mutex.h"
@@ -110,7 +114,11 @@ namespace interface5 {
         //! Node base type
         typedef hash_map_node_base node_base;
         //! Bucket type
+#if __ebbrt
+        struct bucket : ebbrt::cache_aligned, tbb::internal::no_copy {
+#else
         struct bucket : tbb::internal::no_copy {
+#endif
             //! Mutex type for buckets
             typedef spin_rw_mutex mutex_t;
             //! Scoped lock type for mutex
@@ -208,7 +216,11 @@ namespace interface5 {
         void enable_segment( segment_index_t k, bool is_initial = false ) {
             __TBB_ASSERT( k, "Zero segment must be embedded" );
             enable_segment_failsafe watchdog( my_table, k );
+#if __ebbrt
+            std::allocator<bucket> alloc;
+#else
             cache_aligned_allocator<bucket> alloc;
+#endif
             size_type sz;
             __TBB_ASSERT( !is_valid(my_table[k]), "Wrong concurrent assignment");
             if( k >= first_block ) {
