@@ -53,8 +53,8 @@ extern "C" int
 ebbrt_gthread_cond_timedwait(__gthread_cond_t *cond, __gthread_mutex_t *mutex,
                              const __gthread_time_t *abs_timeout);
 
-namespace ebbrt {
-namespace gthread {
-void init();
-}
-}
+// namespace ebbrt {
+// namespace gthread {
+// void init();
+// }
+// }

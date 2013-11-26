@@ -87,14 +87,6 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   LocalIdMap::Init();
   EbbAllocator::Init();
 
-  auto allocator = SlabAllocator::Construct(16);
-  auto p = allocator->Alloc();
-  kprintf("Allocated %p\n", p);
-  auto p2 = allocator->Alloc();
-  kprintf("Allocated %p\n", p2);
-  allocator->Free(p);
-  allocator->Free(p2);
-
   kprintf("Finished\n");
   while (true)
     ;

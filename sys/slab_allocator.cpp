@@ -463,7 +463,7 @@ size_t SlabAllocatorRoot::num_objects_per_slab() {
 SlabAllocator &SlabAllocatorRoot::get_cpu_allocator(size_t cpu_index) {
   auto allocator = cpu_allocators[cpu_index].get();
   if (allocator == nullptr) {
-    allocator = new (cpus[cpu_index].nid) SlabAllocator(*this);
+    allocator = new (cpus[cpu_index].get_nid()) SlabAllocator(*this);
     cpu_allocators[cpu_index] = std::unique_ptr<SlabAllocator>(allocator);
   }
   return *allocator;

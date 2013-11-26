@@ -17,7 +17,8 @@ std::array<int32_t, MAX_NUMA_NODES> ebbrt::node_to_pxm_map;
 
 void ebbrt::numa_init() {
   my_cpu_index = 0;
-  cpus[my_cpu_index].nid = apic_to_node_map[cpus[my_cpu_index].apic_id];
+  cpus[my_cpu_index]
+      .set_nid(apic_to_node_map[cpus[my_cpu_index].get_apic_id()]);
 
   for (auto &numa_node : numa_nodes) {
     std::sort(numa_node.memblocks.begin(), numa_node.memblocks.end());

@@ -2,29 +2,31 @@
 #include <cstdint>
 #include <cerrno>
 
-#include <sys/condition_variable.hpp>
 #include <sys/debug.hpp>
 #include <sys/gthread.hpp>
-#include <sys/spinlock.hpp>
-#include <sys/recursive_spinlock.hpp>
 
 using namespace ebbrt;
 
-static_assert(sizeof(spinlock) <= sizeof(uintptr_t), "spinlock is too large!");
-static_assert(sizeof(recursive_spinlock) <= sizeof(uintptr_t),
-              "recursive_spinlock is too large!");
+// static_assert(sizeof(spinlock) <= sizeof(uintptr_t), "spinlock is too large!");
+// static_assert(sizeof(recursive_spinlock) <= sizeof(uintptr_t),
+//               "recursive_spinlock is too large!");
 extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t *mutex) {
-  *reinterpret_cast<uintptr_t *>(mutex) = 0;
+  // *reinterpret_cast<uintptr_t *>(mutex) = 0;
+  UNIMPLEMENTED();
 }
 
 extern "C" void
 ebbrt_gthread_recursive_mutex_init(__gthread_recursive_mutex_t *mutex) {
-  *reinterpret_cast<uintptr_t *>(mutex) = 0;
+  // *reinterpret_cast<uintptr_t *>(mutex) = 0;
+  UNIMPLEMENTED();
 }
 
-bool active = false;
+// bool active = false;
 
-extern "C" int ebbrt_gthread_active_p(void) { return active; }
+extern "C" int ebbrt_gthread_active_p(void) {
+  UNIMPLEMENTED();
+  // return active;
+}
 
 extern "C" int ebbrt_gthread_once(__gthread_once_t *, void (*)(void)) {
   UNIMPLEMENTED();
@@ -63,8 +65,9 @@ ebbrt_gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t *mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_lock(__gthread_mutex_t *mutex) {
-  auto mut = reinterpret_cast<spinlock *>(mutex);
-  mut->lock();
+  // auto mut = reinterpret_cast<spinlock *>(mutex);
+  // mut->lock();
+  UNIMPLEMENTED();
   return 0;
 }
 
@@ -74,8 +77,9 @@ extern "C" int ebbrt_gthread_mutex_trylock(__gthread_mutex_t *mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_unlock(__gthread_mutex_t *mutex) {
-  auto mut = reinterpret_cast<spinlock *>(mutex);
-  mut->unlock();
+  // auto mut = reinterpret_cast<spinlock *>(mutex);
+  // mut->unlock();
+  UNIMPLEMENTED();
   return 0;
 }
 
@@ -87,20 +91,23 @@ ebbrt_gthread_recursive_mutex_trylock(__gthread_recursive_mutex_t *mutex) {
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_lock(__gthread_recursive_mutex_t *mutex) {
-  auto mut = reinterpret_cast<recursive_spinlock *>(mutex);
-  mut->lock();
+  // auto mut = reinterpret_cast<recursive_spinlock *>(mutex);
+  // mut->lock();
+  UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" int
 ebbrt_gthread_recursive_mutex_unlock(__gthread_recursive_mutex_t *mutex) {
-  auto mut = reinterpret_cast<recursive_spinlock *>(mutex);
-  mut->unlock();
+  // auto mut = reinterpret_cast<recursive_spinlock *>(mutex);
+  // mut->unlock();
+  UNIMPLEMENTED();
   return 0;
 }
 
 extern "C" void ebbrt_gthread_cond_init(__gthread_cond_t *cond) {
-  *cond = new condition_variable();
+  // *cond = new condition_variable();
+  UNIMPLEMENTED();
 }
 
 extern "C" int ebbrt_gthread_cond_broadcast(__gthread_cond_t *cond) {
@@ -183,8 +190,8 @@ ebbrt_gthread_cond_timedwait(__gthread_cond_t *cond, __gthread_mutex_t *mutex,
   return 0;
 }
 
-namespace ebbrt {
-namespace gthread {
-void init() { active = true; }
-}
-}
+// namespace ebbrt {
+// namespace gthread {
+// void init() { active = true; }
+// }
+// }
