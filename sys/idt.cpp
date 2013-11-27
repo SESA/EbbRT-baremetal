@@ -6,7 +6,6 @@
 extern char event_entry[];
 
 namespace ebbrt {
-namespace idt {
 extern "C" void int_de();
 extern "C" void int_db();
 extern "C" void int_nmi();
@@ -59,8 +58,10 @@ public:
 
 static_assert(sizeof(entry) == 16, "packing issue");
 
+namespace {
 entry idt[256];
-void load() {
+}
+void idt_load() {
   struct idtr {
     idtr(uint16_t size, uint64_t addr) : size(size), addr(addr) {}
     uint16_t size;
@@ -71,7 +72,7 @@ void load() {
   asm volatile("lidt %[idt]" : : [idt] "m"(p));
 }
 
-void init() {
+void idt_init() {
   uint16_t cs;
   asm volatile("mov %%cs, %[cs]" : [cs] "=r"(cs));
   idt[0].set(cs, int_de, entry::TYPE_INTERRUPT, 0, 1);
@@ -95,13 +96,12 @@ void init() {
 
   for (int i = 32; i < 256; ++i) {
     idt[i].set(cs, reinterpret_cast<void (*)()>(event_entry + (i - 32) * 16),
-               entry::TYPE_INTERRUPT, 0, 1);
+               entry::TYPE_INTERRUPT, 0, 2);
   }
 }
 
 extern "C" void event_interrupt(int num) {
-  kprintf("Unhandled event %d\n", num);
-  kabort();
+  kabort("Unhandled event %d\n", num);
 }
 
 struct exception_frame {
@@ -150,11 +150,11 @@ void print_exception_frame(exception_frame *ef) {
 
 extern "C" void nmi_interrupt(exception_frame *ef) { ebbrt::kabort(); }
 
-#define UNHANDLED_INTERRUPT(name)                                              \
-  extern "C" void name(exception_frame *ef) {                                  \
-    kprintf("%s\n", __FUNCTION__);                                             \
-    print_exception_frame(ef);                                                 \
-    kabort();                                                                  \
+#define UNHANDLED_INTERRUPT(name)                                       \
+  extern "C" void name(exception_frame *ef) {                           \
+    kprintf("%s\n", __PRETTY_FUNCTION__);                               \
+    print_exception_frame(ef);                                          \
+    kabort();                                                           \
   }
 
 UNHANDLED_INTERRUPT(divide_error_exception)
@@ -174,5 +174,4 @@ UNHANDLED_INTERRUPT(x86_fpu_floating_point_error)
 UNHANDLED_INTERRUPT(alignment_check_exception)
 UNHANDLED_INTERRUPT(machine_check_exception)
 UNHANDLED_INTERRUPT(simd_floating_point_exception)
-}
 }

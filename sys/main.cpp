@@ -43,8 +43,10 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
 
   kprintf("EbbRT Copyright 2013 SESA Developers\n");
 
+  idt_init();
   //bring up the first cpu structure early
   cpus.emplace_back(0, 0, 0);
+  cpus[0].init();
   // cpuid::init();
   // disable_legacy_pic();
 
