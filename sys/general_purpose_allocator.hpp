@@ -64,11 +64,11 @@ public:
   }
 
   static general_purpose_allocator<sizes_in...> &HandleFault(EbbId id) {
-    if (reps[my_cpu_index] == nullptr) {
-      reps[my_cpu_index] = new general_purpose_allocator<sizes_in...>();
+    if (reps[my_cpu()] == nullptr) {
+      reps[my_cpu()] = new general_purpose_allocator<sizes_in...>();
     }
 
-    auto& allocator = *reps[my_cpu_index];
+    auto& allocator = *reps[my_cpu()];
     cache_ref(id, allocator);
     return allocator;
   }

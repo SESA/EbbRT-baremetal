@@ -2,6 +2,6 @@
 
 using namespace ebbrt;
 
-thread_local size_t ebbrt::my_cpu_index;
+thread_local cpu* ebbrt::my_cpu_tls;
 
 boost::container::static_vector<cpu, MAX_NUM_CPUS> ebbrt::cpus;

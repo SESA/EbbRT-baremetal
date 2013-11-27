@@ -7,6 +7,7 @@
 namespace ebbrt {
 
 class cpu {
+  size_t index_;
   uint8_t acpi_id_;
   uint8_t apic_id_;
   nid_t nid_;
@@ -16,8 +17,12 @@ class cpu {
     nid_ = nid;
   }
 public:
-  cpu(uint8_t acpi_id, uint8_t apic_id)
-      : acpi_id_{ acpi_id }, apic_id_{ apic_id } {}
+  cpu(size_t index, uint8_t acpi_id, uint8_t apic_id)
+    : index_{index}, acpi_id_{ acpi_id }, apic_id_{ apic_id } {}
+
+  operator size_t() {
+    return index_;
+  }
   uint8_t get_apic_id() {
     return apic_id_;
   }
@@ -28,12 +33,16 @@ public:
 
 const constexpr size_t MAX_NUM_CPUS = 256;
 
-extern thread_local size_t my_cpu_index;
+extern thread_local cpu* my_cpu_tls;
+
+inline cpu& my_cpu() {
+  return *my_cpu_tls;
+}
 
 extern boost::container::static_vector<cpu, MAX_NUM_CPUS> cpus;
 
 inline nid_t my_node() {
-  return cpus[my_cpu_index].get_nid();
+  return cpus[my_cpu()].get_nid();
 }
 
 const constexpr uint32_t IA32_FS_BASE = 0xC0000100;

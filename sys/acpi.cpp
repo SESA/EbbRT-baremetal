@@ -38,7 +38,7 @@ void parse_madt(const ACPI_TABLE_MADT *madt) {
       if (local_apic->LapicFlags & ACPI_MADT_ENABLED) {
         kprintf("Local APIC: ACPI ID: %u APIC ID: %u\n",
                 local_apic->ProcessorId, local_apic->Id);
-        cpus.emplace_back(local_apic->ProcessorId, local_apic->Id);
+        cpus.emplace_back(cpus.size(), local_apic->ProcessorId, local_apic->Id);
       }
       offset += sizeof(ACPI_MADT_LOCAL_APIC);
       break;

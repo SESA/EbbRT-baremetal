@@ -143,7 +143,7 @@ struct SlabAllocatorRoot {
   void *operator new(size_t size);
   void operator delete(void *p);
   size_t num_objects_per_slab();
-  SlabAllocator &get_cpu_allocator(size_t cpu_index = my_cpu_index);
+  SlabAllocator &get_cpu_allocator(size_t cpu_index = my_cpu());
   SlabAllocatorNode &get_node_allocator(nid_t nid);
 };
 
