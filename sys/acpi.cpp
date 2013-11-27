@@ -28,6 +28,7 @@ void parse_madt(const ACPI_TABLE_MADT *madt) {
   auto len = madt->Header.Length;
   auto madt_addr = reinterpret_cast<uintptr_t>(madt);
   auto offset = sizeof(ACPI_TABLE_MADT);
+  auto first_cpu = true;
   while (offset < len) {
     auto subtable =
         reinterpret_cast<const ACPI_SUBTABLE_HEADER *>(madt_addr + offset);
@@ -38,7 +39,14 @@ void parse_madt(const ACPI_TABLE_MADT *madt) {
       if (local_apic->LapicFlags & ACPI_MADT_ENABLED) {
         kprintf("Local APIC: ACPI ID: %u APIC ID: %u\n",
                 local_apic->ProcessorId, local_apic->Id);
-        cpus.emplace_back(cpus.size(), local_apic->ProcessorId, local_apic->Id);
+        //account for early bringup of first cpu
+        if (first_cpu) {
+          cpus[0] = cpu(0, local_apic->ProcessorId, local_apic->Id);
+          first_cpu = false;
+        } else {
+          cpus.emplace_back(cpus.size(), local_apic->ProcessorId,
+                            local_apic->Id);
+        }
       }
       offset += sizeof(ACPI_MADT_LOCAL_APIC);
       break;
