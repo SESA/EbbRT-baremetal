@@ -21,3 +21,7 @@ bool LocalIdMap::insert(const value_type &value) { return map_.insert(value); }
 bool LocalIdMap::find(const_accessor &result, const EbbId &key) const {
   return map_.find(result, key);
 }
+
+bool LocalIdMap::find(accessor &result, const EbbId &key) {
+  return map_.find(result, key);
+}
