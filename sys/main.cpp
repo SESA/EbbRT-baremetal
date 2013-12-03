@@ -11,6 +11,7 @@
 #include <sys/early_page_allocator.hpp>
 #include <sys/ebb_allocator.hpp>
 // #include <sys/event.hpp>
+#include <sys/event_manager.hpp>
 #include <sys/general_purpose_allocator.hpp>
 // #include <sys/gthread.hpp>
 // #include <sys/idt.hpp>
@@ -27,6 +28,7 @@
 #include <sys/tls.hpp>
 #include <sys/trans.hpp>
 #include <sys/vmem.hpp>
+#include <sys/vmem_allocator.hpp>
 
 using namespace ebbrt;
 
@@ -44,7 +46,7 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   kprintf("EbbRT Copyright 2013 SESA Developers\n");
 
   idt_init();
-  //bring up the first cpu structure early
+  // bring up the first cpu structure early
   cpus.emplace_back(0, 0, 0);
   cpus[0].init();
   // cpuid::init();
@@ -91,8 +93,15 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   gp_type::Init();
   LocalIdMap::Init();
   EbbAllocator::Init();
+  VMemAllocator::Init();
+  EventManager::Init();
 
-  kprintf("Finished\n");
-  while (true)
-    ;
+
+  event_manager->SpawnLocal([]() {
+    kprintf("Finished\n");
+    while (true)
+      ;
+  });
+
+  event_manager->StartLoop();
 }

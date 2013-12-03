@@ -1,6 +1,7 @@
 #include <cinttypes>
 
 #include <sys/debug.hpp>
+#include <sys/idt.hpp>
 #include <sys/priority.hpp>
 
 extern char event_entry[];
@@ -104,32 +105,6 @@ extern "C" void event_interrupt(int num) {
   kabort("Unhandled event %d\n", num);
 }
 
-struct exception_frame {
-  uint64_t fpu[64];
-  uint64_t empty;
-  uint64_t r15;
-  uint64_t r14;
-  uint64_t r13;
-  uint64_t r12;
-  uint64_t r11;
-  uint64_t r10;
-  uint64_t r9;
-  uint64_t r8;
-  uint64_t rbp;
-  uint64_t rdi;
-  uint64_t rsi;
-  uint64_t rdx;
-  uint64_t rcx;
-  uint64_t rbx;
-  uint64_t rax;
-  uint64_t error_code;
-  uint64_t rip;
-  uint64_t cs;
-  uint64_t rflags;
-  uint64_t rsp;
-  uint64_t ss;
-};
-
 void print_exception_frame(exception_frame *ef) {
   kprintf("SS: %#018" PRIx64 " RSP: %#018" PRIx64 "\n", ef->ss, ef->rsp);
   kprintf("FLAGS: %#018" PRIx64 "\n",
@@ -169,7 +144,6 @@ UNHANDLED_INTERRUPT(invalid_tss_exception)
 UNHANDLED_INTERRUPT(segment_not_present)
 UNHANDLED_INTERRUPT(stack_fault_exception)
 UNHANDLED_INTERRUPT(general_protection_exception)
-UNHANDLED_INTERRUPT(page_fault_exception)
 UNHANDLED_INTERRUPT(x86_fpu_floating_point_error)
 UNHANDLED_INTERRUPT(alignment_check_exception)
 UNHANDLED_INTERRUPT(machine_check_exception)

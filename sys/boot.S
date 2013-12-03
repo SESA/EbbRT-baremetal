@@ -87,6 +87,12 @@ start64:
 	.cfi_startproc simple
 	.cfi_def_cfa %rsp, 0
 	.cfi_undefined %rip
+	mov $0x0, %ax
+	mov %ax, %es
+	mov %ax, %ss
+	mov %ax, %ds
+	mov %ax, %fs
+	mov %ax, %gs
 	lea boot_stack_top, %rsp
 	call kmain
 	.cfi_endproc

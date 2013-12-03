@@ -98,9 +98,7 @@ extern "C" void *ebbrt_newlib_malloc(size_t size) {
   return gp_allocator->Alloc(size);
 }
 
-extern "C" void ebbrt_newlib_free(void *ptr) {
-  gp_allocator->Free(ptr);
-}
+extern "C" void ebbrt_newlib_free(void *ptr) { gp_allocator->Free(ptr); }
 
 extern "C" void *ebbrt_newlib_realloc(void *, size_t) {
   UNIMPLEMENTED();
@@ -112,9 +110,12 @@ extern "C" void *ebbrt_newlib_calloc(size_t, size_t) {
   return nullptr;
 }
 
-extern "C" void *ebbrt_newlib_memalign(size_t, size_t) {
-  UNIMPLEMENTED();
-  return nullptr;
+extern "C" void *ebbrt_newlib_memalign(size_t alignment, size_t size) {
+  size = std::max(size, alignment);
+  auto ptr = gp_allocator->Alloc(size);
+  kbugon(align_down(ptr, alignment) != ptr,
+         "Memalign failed to allocate aligned region of memory");
+  return ptr;
 }
 
 extern "C" caddr_t ebbrt_newlib_sbrk(int incr) {

@@ -4,6 +4,7 @@
 
 namespace ebbrt {
 
+// last 2^32 bits of virtual address space are reserved for translation tables
 const constexpr uintptr_t LOCAL_TRANS_VMEM_START = 0xFFFFFFFF00000000;
 
 void trans_init();
@@ -36,10 +37,12 @@ enum : EbbId {
   gp_allocator_id,
   local_id_map_id,
   ebb_allocator_id,
+  event_manager_id,
+  vmem_allocator_id,
   FIRST_FREE_ID
 };
 
-template <typename T> inline void cache_ref(EbbId id, T& ref) {
+template <typename T> inline void cache_ref(EbbId id, T &ref) {
   auto le = reinterpret_cast<LocalEntry *>(LOCAL_TRANS_VMEM_START +
                                            sizeof(LocalEntry) * id);
   le->ref = &ref;

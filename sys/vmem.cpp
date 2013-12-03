@@ -7,6 +7,7 @@
 #include <sys/debug.hpp>
 #include <sys/e820.hpp>
 #include <sys/early_page_allocator.hpp>
+#include <sys/page_allocator.hpp>
 #include <sys/vmem.hpp>
 
 using namespace ebbrt;
@@ -34,7 +35,7 @@ void ebbrt::early_map_memory(uint64_t addr, uint64_t length) {
                       [=](pte & entry) {
     auto page = early_allocate_page();
     auto page_addr = pfn_to_addr(page);
-    new (reinterpret_cast<void*>(page_addr)) pte[512];
+    new (reinterpret_cast<void *>(page_addr)) pte[512];
 
     entry.set_normal(page_addr);
     return true;
@@ -60,6 +61,23 @@ void ebbrt::early_unmap_memory(uint64_t addr, uint64_t length) {
     kprintf("Asked to unmap memory that wasn't mapped!\n");
     kabort();
     return false;
+  });
+}
+
+void ebbrt::map_memory(pfn_t vfn, pfn_t pfn, uint64_t length) {
+  auto vaddr = pfn_to_addr(vfn);
+  traverse_page_table(page_table_root, vaddr, vaddr + length, 0, 4,
+                      [=](pte & entry, uint64_t base_virt, size_t level) {
+                        kassert(!entry.present());
+                        entry.set(pfn + (base_virt - vaddr), level > 0);
+                      },
+                      [](pte & entry) {
+    auto page = page_allocator->Alloc();
+    kbugon(page == 0);
+    auto page_addr = pfn_to_addr(page);
+    new (reinterpret_cast<void *>(page_addr)) pte[512];
+    entry.set_normal(page_addr);
+    return true;
   });
 }
 

@@ -162,9 +162,12 @@ public:
     idt_load();
   }
 
-  operator size_t() { return index_; }
-  uint8_t get_apic_id() { return apic_id_; }
-  nid_t get_nid() { return nid_; }
+  operator size_t() const { return index_; }
+  uint8_t get_apic_id() const { return apic_id_; }
+  nid_t get_nid() const { return nid_; }
+
+  void set_acpi_id(uint8_t id) { acpi_id_ = id; }
+  void set_apic_id(uint8_t id) { apic_id_ = id; }
 };
 
 const constexpr size_t MAX_NUM_CPUS = 256;
@@ -178,6 +181,12 @@ extern boost::container::static_vector<cpu, MAX_NUM_CPUS> cpus;
 inline nid_t my_node() { return cpus[my_cpu()].get_nid(); }
 
 const constexpr uint32_t IA32_FS_BASE = 0xC0000100;
+
+inline uintptr_t read_cr2() {
+  uintptr_t cr2;
+  asm volatile ("mov %%cr2, %[cr2]" : [cr2] "=r" (cr2));
+  return cr2;
+}
 
 inline uint64_t rdmsr(uint32_t index) {
   uint32_t low, high;

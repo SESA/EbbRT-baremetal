@@ -43,6 +43,9 @@
         fxsave (%rsp)
         mov %rsp, %rdi
         call \handler
+        fxrstor (%rsp)
+        add $520, %rsp
+        .cfi_adjust_cfa_offset -520
         popq_cfi %r15
         popq_cfi %r14
         popq_cfi %r13

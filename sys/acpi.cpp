@@ -41,7 +41,8 @@ void parse_madt(const ACPI_TABLE_MADT *madt) {
                 local_apic->ProcessorId, local_apic->Id);
         //account for early bringup of first cpu
         if (first_cpu) {
-          cpus[0] = cpu(0, local_apic->ProcessorId, local_apic->Id);
+          cpus[0].set_acpi_id(local_apic->ProcessorId);
+          cpus[0].set_apic_id(local_apic->Id);
           first_cpu = false;
         } else {
           cpus.emplace_back(cpus.size(), local_apic->ProcessorId,
