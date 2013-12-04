@@ -42,10 +42,13 @@ template <> __attribute__((noreturn)) inline void kabort() {
     }                                                                          \
   } while (0)
 #else
-#define kassert(expr)
+#define kassert(expr)                                                          \
+  do {                                                                         \
+    (void)sizeof(expr);                                                           \
+  } while (0)
 #endif
 
-template <typename... Args> void kbugon(bool expr, const Args&... args) {
+template <typename... Args> void kbugon(bool expr, const Args &... args) {
   if (expr) {
     kabort(args...);
   }
