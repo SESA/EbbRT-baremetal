@@ -1,11 +1,12 @@
 #include <cstdarg>
 #include <cstring>
+#include <stdexcept>
 
 #include <sys/acpi.hpp>
-// #include <sys/apic.hpp>
+#include <sys/apic.hpp>
 #include <sys/console.hpp>
 // #include <sys/cpu.hpp>
-// #include <sys/cpuid.hpp>
+#include <sys/cpuid.hpp>
 #include <sys/debug.hpp>
 #include <sys/e820.hpp>
 #include <sys/early_page_allocator.hpp>
@@ -25,6 +26,7 @@
 // #include <sys/power.hpp>
 // #include <sys/priority.hpp>
 #include <sys/slab_allocator.hpp>
+#include <sys/smp.hpp>
 #include <sys/tls.hpp>
 #include <sys/trans.hpp>
 #include <sys/vmem.hpp>
@@ -36,7 +38,11 @@ namespace {
 bool started_once = false;
 }
 
-extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
+extern char __eh_frame_start[];
+extern "C" void __register_frame(void *);
+
+extern "C" __attribute__((noreturn)) void
+ebbrt::kmain(MultibootInformation *mbi) {
   console::init();
 
   /* If by chance we reboot back into the kernel, panic */
@@ -46,13 +52,13 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   kprintf("EbbRT Copyright 2013 SESA Developers\n");
 
   idt_init();
+  cpuid_init();
+  disable_pic();
+  tls_init();
   // bring up the first cpu structure early
   cpus.emplace_back(0, 0, 0);
   cpus[0].init();
-  // cpuid::init();
-  // disable_legacy_pic();
 
-  tls_init();
   e820_init(mbi);
   e820_print_map();
   early_page_allocator_init();
@@ -96,11 +102,11 @@ extern "C" __attribute__((noreturn)) void kmain(MultibootInformation *mbi) {
   VMemAllocator::Init();
   EventManager::Init();
 
-
   event_manager->SpawnLocal([]() {
-    kprintf("Finished\n");
-    while (true)
-      ;
+    // Enable exceptions
+    __register_frame(__eh_frame_start);
+    apic_init();
+    smp_init();
   });
 
   event_manager->StartLoop();

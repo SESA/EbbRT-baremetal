@@ -1,3 +1,5 @@
+#include <unordered_map>
+
 #include <boost/container/flat_map.hpp>
 
 #include <sys/cpu.hpp>
@@ -42,26 +44,37 @@ namespace {
 const constexpr size_t STACK_NPAGES = 2048; // 8 MB stack
 }
 
-class event_stack_fault_handler {
-  size_t faulted_pages_;
+class event_stack_fault_handler : public VMemAllocator::page_fault_handler_t {
+  std::unordered_map<pfn_t, pfn_t> mappings_;
 
 public:
-  event_stack_fault_handler() : faulted_pages_{ 0 } {}
+  event_stack_fault_handler() = default;
+  event_stack_fault_handler(const event_stack_fault_handler &) = delete;
+  event_stack_fault_handler &operator=(const event_stack_fault_handler &) =
+      delete;
   ~event_stack_fault_handler() {
-    kbugon(faulted_pages_ > 0, "Free stack pages!\n");
+    kbugon(!mappings_.empty(), "Free stack pages!\n");
   }
-  void handle_fault(exception_frame *ef, uintptr_t faulted_address) {
-    kbugon(faulted_pages_ + 1 >= STACK_NPAGES, "Stack overflow!\n");
-    auto page = page_allocator->Alloc();
-    kbugon(page == 0);
-    map_memory(pfn_down(faulted_address), page);
-    faulted_pages_++;
+  void handle_fault(exception_frame *ef, uintptr_t faulted_address) override {
+    auto page = pfn_down(faulted_address);
+    auto it = mappings_.find(page);
+    if (it == mappings_.end()) {
+      kbugon(mappings_.size() + 1 >= STACK_NPAGES, "Stack overflow!\n");
+      auto backing_page = page_allocator->Alloc();
+      kbugon(backing_page == 0, "Failed to allocate page for stack\n");
+      map_memory(page, backing_page);
+      mappings_[page] = backing_page;
+    } else {
+      map_memory(page, it->second);
+    }
   }
 };
 
-EventManager::EventContext::EventContext()
-    : stack_{ vmem_allocator->Alloc(STACK_NPAGES,
-                                    event_stack_fault_handler()) } {}
+EventManager::EventContext::EventContext() {
+  auto fault_handler = new event_stack_fault_handler;
+  stack_ = vmem_allocator->Alloc(
+      STACK_NPAGES, std::unique_ptr<event_stack_fault_handler>(fault_handler));
+}
 
 uintptr_t EventManager::EventContext::top_of_stack() const {
   return pfn_to_addr(stack_ + STACK_NPAGES);
@@ -82,10 +95,18 @@ void EventManager::CallLoop(uintptr_t mgr) {
 
 void EventManager::Loop() {
   while (1) {
-    kbugon(tasks_.empty());
+    kbugon(tasks_.empty(), "No tasks to run\n");
     auto f = std::move(tasks_.top());
     tasks_.pop();
-    f();
+    try {
+      f();
+    }
+    catch (std::exception &e) {
+      kabort("Unhandled exception caught: %s\n", e.what());
+    }
+    catch (...) {
+      kabort("Unhandled exception caught!\n");
+    }
   }
 }
 

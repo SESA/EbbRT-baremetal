@@ -3,17 +3,15 @@
 #include <cstdint>
 
 namespace ebbrt {
-class apic_t {
-  uint32_t kvm_pv_eoi_word_;
-public:
-  apic_t();
-  void self_ipi(uint8_t vector);
-private:
-  static const constexpr uint32_t SVR = 0x80f;
-  static const constexpr uint32_t SELF_IPI = 0x83f;
+void apic_init();
+const constexpr uint8_t DELIVERY_FIXED = 0;
+const constexpr uint8_t DELIVERY_SMI = 2;
+const constexpr uint8_t DELIVERY_NMI = 4;
+const constexpr uint8_t DELIVERY_INIT = 5;
+const constexpr uint8_t DELIVERY_STARTUP = 6;
 
-  void software_enable();
-};
-
-  void disable_legacy_pic();
+void apic_ipi(uint8_t apic_id, uint8_t vector, bool level = true,
+              uint8_t delivery_mode = DELIVERY_FIXED);
+uint32_t apic_get_id();
+void disable_pic();
 }

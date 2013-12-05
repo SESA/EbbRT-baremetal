@@ -1,3 +1,4 @@
+#include <atomic>
 #include <cstring>
 #include <cstdint>
 #include <cerrno>
@@ -7,12 +8,13 @@
 
 using namespace ebbrt;
 
-// static_assert(sizeof(spinlock) <= sizeof(uintptr_t), "spinlock is too large!");
+// static_assert(sizeof(spinlock) <= sizeof(uintptr_t), "spinlock is too
+// large!");
 // static_assert(sizeof(recursive_spinlock) <= sizeof(uintptr_t),
 //               "recursive_spinlock is too large!");
 extern "C" void ebbrt_gthread_mutex_init(__gthread_mutex_t *mutex) {
-  // *reinterpret_cast<uintptr_t *>(mutex) = 0;
-  UNIMPLEMENTED();
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  flag->clear();
 }
 
 extern "C" void
@@ -21,15 +23,23 @@ ebbrt_gthread_recursive_mutex_init(__gthread_recursive_mutex_t *mutex) {
   UNIMPLEMENTED();
 }
 
-// bool active = false;
-
 extern "C" int ebbrt_gthread_active_p(void) {
-  UNIMPLEMENTED();
-  // return active;
+  return true;
 }
 
-extern "C" int ebbrt_gthread_once(__gthread_once_t *, void (*)(void)) {
-  UNIMPLEMENTED();
+extern "C" int ebbrt_gthread_once(__gthread_once_t *once, void (*func)(void)) {
+  auto flag = static_cast<std::atomic<uintptr_t> *>(static_cast<void *>(once));
+
+  uintptr_t expected = 0;
+  auto success =
+      flag->compare_exchange_strong(expected, 1, std::memory_order_relaxed);
+
+  if (success) {
+    func();
+    flag->store(2, std::memory_order_release);
+  } else {
+    kbugon(flag->load(std::memory_order_consume) != 2, "gthread_once busy!\n");
+  }
   return 0;
 }
 
@@ -65,9 +75,8 @@ ebbrt_gthread_recursive_mutex_destroy(__gthread_recursive_mutex_t *mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_lock(__gthread_mutex_t *mutex) {
-  // auto mut = reinterpret_cast<spinlock *>(mutex);
-  // mut->lock();
-  UNIMPLEMENTED();
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  kbugon(flag->test_and_set(std::memory_order_acquire), "lock is busy!\n");
   return 0;
 }
 
@@ -77,9 +86,8 @@ extern "C" int ebbrt_gthread_mutex_trylock(__gthread_mutex_t *mutex) {
 }
 
 extern "C" int ebbrt_gthread_mutex_unlock(__gthread_mutex_t *mutex) {
-  // auto mut = reinterpret_cast<spinlock *>(mutex);
-  // mut->unlock();
-  UNIMPLEMENTED();
+  auto flag = reinterpret_cast<std::atomic_flag*>(mutex);
+  flag->clear(std::memory_order_release);
   return 0;
 }
 

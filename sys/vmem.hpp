@@ -8,6 +8,7 @@ class pte {
 
 public:
   pte() { clear(); }
+  explicit pte(uint64_t raw) : raw_(raw) {}
   bool present() const { return raw_ & 1; }
   uint64_t addr(bool large) const {
     auto ret = raw_ & ((UINT64_C(1) << 52) - 1);
@@ -96,4 +97,5 @@ void enable_runtime_page_table();
 void early_map_memory(uint64_t addr, uint64_t length);
 void early_unmap_memory(uint64_t addr, uint64_t length);
 void map_memory(pfn_t vfn, pfn_t pfn, uint64_t length = PAGE_SIZE);
+void vmem_ap_init(size_t index);
 }

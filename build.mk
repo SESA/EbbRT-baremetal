@@ -34,10 +34,10 @@ q-build-s = $(call quiet, $(build-s), AS $@)
 	$(q-build-s)
 
 objects = sys/acpi.o
-# objects += sys/apic.o
+objects += sys/apic.o
 objects += sys/boot.o
 objects += sys/cpu.o
-# objects += sys/cpuid.o
+objects += sys/cpuid.o
 objects += sys/debug.o
 objects += sys/e820.o
 objects += sys/early_page_allocator.o
@@ -56,6 +56,7 @@ objects += sys/page_allocator.o
 #objects += sys/pmem.o
 #objects += sys/power.o
 objects += sys/slab_allocator.o
+objects += sys/smp.o
 objects += sys/stack.o
 objects += sys/tls.o
 objects += sys/trans.o

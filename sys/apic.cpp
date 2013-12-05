@@ -3,11 +3,11 @@
 #include <sys/cpuid.hpp>
 #include <sys/debug.hpp>
 #include <sys/io.hpp>
-#include <sys/priority.hpp>
 
-namespace ebbrt {
-void disable_legacy_pic() {
-  if (!cpuid::features.x2apic) {
+using namespace ebbrt;
+
+void ebbrt::disable_pic() {
+  if (!features.x2apic) {
     kprintf("No support for x2apic! Aborting\n");
     kabort();
   }
@@ -17,17 +17,28 @@ void disable_legacy_pic() {
   out8(0xa1, 0xff);
 }
 
-apic_t::apic_t() {
+const constexpr uint32_t MSR_X2APIC_IDR = 0x802;
+const constexpr uint32_t MSR_X2APIC_SVR = 0x80f;
+const constexpr uint32_t MSR_X2APIC_ICR = 0x830;
+
+void ebbrt::apic_init() {
   auto apic_base = rdmsr(MSR_IA32_APIC_BASE);
   // enable x2apic mode
   wrmsr(MSR_IA32_APIC_BASE, apic_base | 0xc00);
-  software_enable();
+  wrmsr(MSR_X2APIC_SVR, 0x100);
 
-  if (cpuid::features.kvm_pv_eoi) {
-    wrmsr(MSR_KVM_PV_EOI, reinterpret_cast<uint64_t>(&kvm_pv_eoi_word_));
-  }
+  // if (features.kvm_pv_eoi) {
+  //   wrmsr(MSR_KVM_PV_EOI, reinterpret_cast<uint64_t>(&kvm_pv_eoi_word_));
+  // }
 }
 
-void apic_t::software_enable() { wrmsr(SVR, 0x100); }
-void apic_t::self_ipi(uint8_t vector) { wrmsr(SELF_IPI, vector); }
+void ebbrt::apic_ipi(uint8_t apic_id, uint8_t vector, bool level,
+                     uint8_t delivery_mode) {
+  auto val = (uint64_t(apic_id) << 32) | (uint64_t(level) << 14) |
+             (uint64_t(delivery_mode) << 8) | vector;
+  wrmsr(MSR_X2APIC_ICR, val);
+}
+
+uint32_t ebbrt::apic_get_id() {
+  return rdmsr(MSR_X2APIC_IDR);
 }

@@ -22,23 +22,30 @@ VMemAllocator &VMemAllocator::HandleFault(EbbId id) {
 }
 
 VMemAllocator::VMemAllocator() {
-  regions_.emplace(pfn_up(0xFFFF800000000000),
-                   pfn_down(LOCAL_TRANS_VMEM_START));
+  regions_.emplace(std::piecewise_construct,
+                   std::forward_as_tuple(pfn_up(0xFFFF800000000000)),
+                   std::forward_as_tuple(pfn_down(LOCAL_TRANS_VMEM_START)));
 }
 
-pfn_t VMemAllocator::Alloc(size_t npages, page_fault_handler_t pf_handler) {
+pfn_t VMemAllocator::Alloc(size_t npages,
+                           std::unique_ptr<page_fault_handler_t> pf_handler) {
+  std::lock_guard<spinlock> lock{ lock_ };
   for (auto it = regions_.begin(); it != regions_.end(); ++it) {
-    if (!it->free() || it->npages() < npages)
+    const auto &begin = it->first;
+    auto &end = it->second.end;
+    if (it->second.page_fault_handler || end - begin < npages)
       continue;
 
-    auto ret = it->end() - npages;
+    auto ret = end - npages;
 
-    if (ret == it->start()) {
-      it->set_handler(std::move(pf_handler));
+    if (ret == begin) {
+      it->second.page_fault_handler = std::move(pf_handler);
     } else {
-      it->truncate(npages);
-      auto p = regions_.emplace(ret, ret + npages);
-      p.first->set_handler(std::move(pf_handler));
+      end -= npages;
+      auto p =
+          regions_.emplace(std::piecewise_construct, std::forward_as_tuple(ret),
+                           std::forward_as_tuple(ret + npages));
+      p.first->second.page_fault_handler = std::move(pf_handler);
     }
 
     return ret;
@@ -48,12 +55,13 @@ pfn_t VMemAllocator::Alloc(size_t npages, page_fault_handler_t pf_handler) {
 }
 
 void VMemAllocator::HandlePageFault(exception_frame *ef) {
+  std::lock_guard<spinlock> lock{ lock_ };
   auto fault_addr = read_cr2();
-  auto it = regions_.lower_bound(region(pfn_down(fault_addr)));
-  kbugon(it == regions_.end() || it->end() < pfn_up(fault_addr),
+  auto it = regions_.lower_bound(pfn_down(fault_addr));
+  kbugon(it == regions_.end() || it->second.end < pfn_up(fault_addr),
          "Could not find region for faulting address!\n");
-  kbugon(it->free(), "Fault on a free region!\n");
-  it->get_handler().handle_fault(ef, fault_addr);
+  kbugon(!it->second.page_fault_handler, "Fault on a free region!\n");
+  it->second.page_fault_handler->handle_fault(ef, fault_addr);
 }
 
 extern "C" void page_fault_exception(exception_frame *ef) {

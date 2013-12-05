@@ -45,3 +45,11 @@ pfn_t operator-(const pfn_t &lhs, T npages) {
   return pfn_t((uintptr_t)lhs - npages);
 }
 }
+
+namespace std {
+template <> struct hash<ebbrt::pfn_t> {
+  size_t operator()(const ebbrt::pfn_t &x) const {
+    return hash<uintptr_t>()((uintptr_t)x);
+  }
+};
+}

@@ -42,6 +42,8 @@ private:
                      &free_page::member_hook> > free_page_list;
 
   std::array<free_page_list, MAX_ORDER + 1> free_page_lists;
+  friend void ebbrt::vmem_ap_init(size_t index);
+  friend void ebbrt::trans_ap_init(size_t index);
   static boost::container::static_vector<PageAllocator, MAX_NUMA_NODES>
   allocators;
 

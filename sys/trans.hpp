@@ -8,6 +8,7 @@ namespace ebbrt {
 const constexpr uintptr_t LOCAL_TRANS_VMEM_START = 0xFFFFFFFF00000000;
 
 void trans_init();
+void trans_ap_init(size_t index);
 
 struct LocalEntry {
   void *ref;

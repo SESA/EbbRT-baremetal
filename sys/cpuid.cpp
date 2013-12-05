@@ -3,8 +3,7 @@
 
 #include <sys/cpuid.hpp>
 
-namespace ebbrt {
-namespace cpuid {
+using namespace ebbrt;
 struct result {
   uint32_t eax;
   uint32_t ebx;
@@ -18,7 +17,7 @@ inline result cpuid(uint32_t leaf) {
   return r;
 }
 
-features_t features;
+cpuid_features_t ebbrt::features;
 
 struct vendor_id_t {
   uint32_t ebx;
@@ -32,17 +31,17 @@ struct cpuid_bit {
   uint32_t leaf;
   uint8_t reg;
   uint32_t bit;
-  bool features_t::*flag;
+  bool cpuid_features_t::*flag;
   vendor_id_t *vendor_id;
 };
 
-cpuid_bit cpuid_bits[] = { { 1, 2, 21, &features_t::x2apic },
-                           { 0x40000001,                  0,             6,
-                             &features_t::kvm_pv_eoi, &kvm_vendor_id }, };
+cpuid_bit cpuid_bits[] = { { 1, 2, 21, &cpuid_features_t::x2apic },
+                           { 0x40000001,                    0,             6,
+                             &cpuid_features_t::kvm_pv_eoi, &kvm_vendor_id }, };
 
 constexpr size_t nr_cpuid_bits = sizeof(cpuid_bits) / sizeof(cpuid_bit);
 
-void init() {
+void ebbrt::cpuid_init() {
   for (size_t i = 0; i < nr_cpuid_bits; ++i) {
     const auto &bit = cpuid_bits[i];
     auto vals = cpuid(bit.leaf & 0xf0000000);
@@ -65,6 +64,4 @@ void init() {
     uint32_t val = res_array[bit.reg];
     features.*(bit.flag) = (val >> bit.bit) & 1;
   }
-}
-}
 }

@@ -65,11 +65,14 @@ void ebbrt::early_unmap_memory(uint64_t addr, uint64_t length) {
 }
 
 void ebbrt::map_memory(pfn_t vfn, pfn_t pfn, uint64_t length) {
+  auto pte_root = pte{read_cr3()};
   auto vaddr = pfn_to_addr(vfn);
-  traverse_page_table(page_table_root, vaddr, vaddr + length, 0, 4,
+  traverse_page_table(pte_root, vaddr, vaddr + length, 0, 4,
                       [=](pte & entry, uint64_t base_virt, size_t level) {
                         kassert(!entry.present());
-                        entry.set(pfn + (base_virt - vaddr), level > 0);
+                        entry.set(pfn_to_addr(pfn) + (base_virt - vaddr),
+                                  level > 0);
+                        std::atomic_thread_fence(std::memory_order_release);
                       },
                       [](pte & entry) {
     auto page = page_allocator->Alloc();
@@ -85,4 +88,19 @@ void ebbrt::enable_runtime_page_table() {
   asm volatile("mov %[page_table], %%cr3"
                :
                : [page_table] "r"(page_table_root));
+}
+
+void ebbrt::vmem_ap_init(size_t index) {
+  enable_runtime_page_table();
+  pte ap_pte_root;
+  auto nid = cpus[index].get_nid();
+  auto &p_allocator = PageAllocator::allocators[nid];
+  auto page = p_allocator.Alloc(0, nid);
+  kbugon(page == 0, "Failed to allocate page for initial page tables\n");
+  auto page_addr = pfn_to_addr(page);
+  std::memcpy(reinterpret_cast<void *>(page_addr),
+              reinterpret_cast<void *>(page_table_root.addr(false)), 4096);
+  ap_pte_root.set_normal(page_addr);
+
+  asm volatile("mov %[page_table], %%cr3" : : [page_table] "r" (ap_pte_root));
 }

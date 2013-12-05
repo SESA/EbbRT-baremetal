@@ -3,13 +3,15 @@
 #include <stack>
 
 #include <sys/main.hpp>
+#include <sys/smp.hpp>
 #include <sys/trans.hpp>
 #include <sys/vmem_allocator.hpp>
 
 namespace ebbrt {
 
 class EventManager {
-  friend void ::kmain(ebbrt::MultibootInformation *mbi);
+  friend void ebbrt::kmain(ebbrt::MultibootInformation *mbi);
+  friend void ebbrt::smp_main();
   void StartLoop() __attribute__((noreturn));
   static void CallLoop(uintptr_t mgr) __attribute__((noreturn));
   void Loop() __attribute__((noreturn));

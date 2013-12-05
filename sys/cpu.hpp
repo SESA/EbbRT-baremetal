@@ -2,7 +2,9 @@
 
 #include <boost/container/static_vector.hpp>
 
+#include <sys/apic.hpp>
 #include <sys/debug.hpp>
+#include <sys/explicitly_constructed.hpp>
 #include <sys/idt.hpp>
 #include <sys/numa.hpp>
 
@@ -135,6 +137,9 @@ public:
   void set_tss_addr(uint64_t tss_addr) { tss.set(tss_addr); }
 };
 
+struct cpu;
+extern thread_local cpu *my_cpu_tls;
+
 class cpu {
   aligned_tss atss_;
   gdt gdt_;
@@ -151,16 +156,7 @@ public:
   cpu(size_t index, uint8_t acpi_id, uint8_t apic_id)
       : index_{ index }, acpi_id_{ acpi_id }, apic_id_{ apic_id } {}
 
-  void init() {
-    gdt_.set_tss_addr(reinterpret_cast<uint64_t>(&atss_.tss));
-    uint64_t interrupt_stack;
-    kbugon(index_ != 0, "Need to allocate page for interrupt stack for smp\n");
-    interrupt_stack =
-        reinterpret_cast<uint64_t>(boot_interrupt_stack + PAGE_SIZE);
-    atss_.tss.set_ist_entry(1, interrupt_stack);
-    gdt_.load();
-    idt_load();
-  }
+  void init();
 
   operator size_t() const { return index_; }
   uint8_t get_apic_id() const { return apic_id_; }
@@ -172,20 +168,26 @@ public:
 
 const constexpr size_t MAX_NUM_CPUS = 256;
 
-extern thread_local cpu *my_cpu_tls;
-
 inline cpu &my_cpu() { return *my_cpu_tls; }
 
 extern boost::container::static_vector<cpu, MAX_NUM_CPUS> cpus;
 
 inline nid_t my_node() { return cpus[my_cpu()].get_nid(); }
 
-const constexpr uint32_t IA32_FS_BASE = 0xC0000100;
+const constexpr uint32_t MSR_IA32_APIC_BASE = 0x0000001b;
+const constexpr uint32_t MSR_KVM_PV_EOI = 0x4b564d04;
+const constexpr uint32_t MSR_IA32_FS_BASE = 0xC0000100;
 
 inline uintptr_t read_cr2() {
   uintptr_t cr2;
-  asm volatile ("mov %%cr2, %[cr2]" : [cr2] "=r" (cr2));
+  asm volatile("mov %%cr2, %[cr2]" : [cr2] "=r"(cr2));
   return cr2;
+}
+
+inline uintptr_t read_cr3() {
+  uintptr_t cr3;
+  asm volatile("mov %%cr3, %[cr3]" : [cr3] "=r"(cr3));
+  return cr3;
 }
 
 inline uint64_t rdmsr(uint32_t index) {

@@ -16,7 +16,6 @@ std::array<nid_t, MAX_PXM_DOMAINS> ebbrt::pxm_to_node_map;
 std::array<int32_t, MAX_NUMA_NODES> ebbrt::node_to_pxm_map;
 
 void ebbrt::numa_init() {
-  my_cpu_tls = &cpus[0];
   my_cpu().set_nid(apic_to_node_map[my_cpu().get_apic_id()]);
 
   for (auto &numa_node : numa_nodes) {

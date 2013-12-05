@@ -5,5 +5,5 @@
 #include <sys/debug.hpp>
 
 static inline int __TBB_Yield() {
-  UNIMPLEMENTED();
+  return 0;
 }

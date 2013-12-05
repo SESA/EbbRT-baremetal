@@ -1,4 +1,8 @@
+#include <mutex>
+
+#include <sys/explicitly_constructed.hpp>
 #include <sys/io.hpp>
+#include <sys/spinlock.hpp>
 
 namespace ebbrt {
 namespace console {
@@ -19,6 +23,10 @@ constexpr uint8_t LINE_CNTL_REG_DLAB = 1 << 7;
 constexpr uint16_t LINE_STATUS_REG = 5;
 constexpr uint8_t LINE_STATUS_REG_THR_EMPTY = 1 << 5;
 
+namespace {
+explicitly_constructed<spinlock> console_lock;
+}
+
 void init() {
   out8(PORT + INT_ENABLE, 0); // disable interrupts
 
@@ -29,9 +37,11 @@ void init() {
 
   // set as 8N1 (8 bits, no parity, one stop bit)
   out8(PORT + LINE_CNTL_REG, LINE_CNTL_REG_CHARLEN_8);
+
+  console_lock.construct();
 }
 
-void write(char c) {
+void write_locked(char c) {
   while (!(in8(PORT + LINE_STATUS_REG) & LINE_STATUS_REG_THR_EMPTY))
     ;
 
@@ -39,8 +49,9 @@ void write(char c) {
 }
 
 void write(const char *str) {
+  std::lock_guard<spinlock> lock(*console_lock);
   while (*str != '\0') {
-    write(*str++);
+    write_locked(*str++);
   }
 }
 }
