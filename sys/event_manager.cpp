@@ -95,17 +95,20 @@ void EventManager::CallLoop(uintptr_t mgr) {
 
 void EventManager::Loop() {
   while (1) {
-    kbugon(tasks_.empty(), "No tasks to run\n");
-    auto f = std::move(tasks_.top());
-    tasks_.pop();
-    try {
-      f();
-    }
-    catch (std::exception &e) {
-      kabort("Unhandled exception caught: %s\n", e.what());
-    }
-    catch (...) {
-      kabort("Unhandled exception caught!\n");
+    if (!tasks_.empty()) {
+      auto f = std::move(tasks_.top());
+      tasks_.pop();
+      try {
+        f();
+      }
+      catch (std::exception &e) {
+        kabort("Unhandled exception caught: %s\n", e.what());
+      }
+      catch (...) {
+        kabort("Unhandled exception caught!\n");
+      }
+    } else {
+      asm volatile("hlt");
     }
   }
 }

@@ -13,7 +13,12 @@ extern char smpboot[];
 extern char smpboot_end[];
 extern char *smp_stack_free;
 
+namespace {
+explicitly_constructed<spin_barrier> smp_barrier;
+}
+
 void ebbrt::smp_init() {
+  smp_barrier.construct(cpus.size());
   tls_smp_init();
   char *stack_list = 0;
   auto num_aps = cpus.size() - 1;
@@ -36,6 +41,7 @@ void ebbrt::smp_init() {
     // FIXME: spin for a bit?
     apic_ipi(apic_id, SMP_START_ADDRESS >> 12, 1, DELIVERY_STARTUP);
   }
+  smp_barrier->wait();
 }
 
 extern "C" __attribute__((noreturn)) void ebbrt::smp_main() {
@@ -53,5 +59,6 @@ extern "C" __attribute__((noreturn)) void ebbrt::smp_main() {
 
   cpu_it->init();
 
+  event_manager->SpawnLocal([]() { smp_barrier->wait(); });
   event_manager->StartLoop();
 }

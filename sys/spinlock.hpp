@@ -15,4 +15,27 @@ public:
   }
   void unlock() { lock_.clear(std::memory_order_release); }
 };
+
+class spin_barrier {
+  const unsigned int n_;
+
+  std::atomic<unsigned int> waiters_;
+
+  std::atomic<unsigned int> completed_;
+
+public:
+  spin_barrier(unsigned int n) : n_(n), waiters_{ 0 }, completed_{ 0 } {}
+
+  void wait() {
+    auto step = completed_.load();
+
+    if (waiters_.fetch_add(1) == n_ - 1) {
+      waiters_.store(0);
+      completed_.fetch_add(1);
+    } else {
+      while (completed_.load() == step)
+        ;
+    }
+  }
+};
 }

@@ -107,6 +107,7 @@ ebbrt::kmain(MultibootInformation *mbi) {
     __register_frame(__eh_frame_start);
     apic_init();
     smp_init();
+    kprintf("Finished\n");
   });
 
   event_manager->StartLoop();
