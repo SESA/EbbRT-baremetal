@@ -1,11 +1,13 @@
 CXX = $(src)/ext/toolchain/bin/x86_64-pc-ebbrt-g++
 CC = $(src)/ext/toolchain/bin/x86_64-pc-ebbrt-gcc
 
-INCLUDES = -I $(src) -I $(src)/misc/include
-INCLUDES += -I $(src)/misc/acpica/source/include
-INCLUDES += -I $(src)/misc/lwip/include
+INCLUDES = -I $(src)
+INCLUDES += -I $(src)/ext/acpica/include
+INCLUDES += -I $(src)/ext/boost/include
+INCLUDES += -I $(src)/ext/lwip/include
+INCLUDES += -I $(src)/ext/tbb/include
 INCLUDES += -iquote $(src)/sys
-INCLUDES += -iquote $(src)/misc/lwip/include/ipv4/
+INCLUDES += -iquote $(src)/ext/lwip/include/ipv4/
 
 CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(optflags) -Wall -Werror \
 	-fno-stack-protector $(INCLUDES)
@@ -71,18 +73,18 @@ objects += $(acpi_objects)
 objects += $(tbb_objects)
 objects += $(lwip_objects)
 
-tbb_sources := $(shell find $(src)/misc/tbb -type f -name '*.cpp')
+tbb_sources := $(shell find $(src)/ext/tbb -type f -name '*.cpp')
 tbb_objects = $(patsubst $(src)/%.cpp, %.o, $(tbb_sources))
 
-$(tbb_objects): CPPFLAGS += -iquote $(src)/misc/include
+$(tbb_objects): CPPFLAGS += -iquote $(src)/ext/tbb/include
 
-acpi_sources := $(shell find $(src)/misc/acpica/source/components -type f -name '*.c')
+acpi_sources := $(shell find $(src)/ext/acpica/components -type f -name '*.c')
 acpi_objects = $(patsubst $(src)/%.c, %.o, $(acpi_sources))
 
 $(acpi_objects): CFLAGS += -fno-strict-aliasing -Wno-strict-aliasing \
 	-Wno-unused-but-set-variable -DACPI_LIBRARY
 
-lwip_sources := $(filter-out %icmp6.c %inet6.c %ip6_addr.c %ip6.c,$(shell find $(src)/misc/lwip -type f -name '*.c'))
+lwip_sources := $(filter-out %icmp6.c %inet6.c %ip6_addr.c %ip6.c,$(shell find $(src)/ext/lwip -type f -name '*.c'))
 lwip_objects = $(patsubst $(src)/%.c, %.o, $(lwip_sources))
 
 $(lwip_objects): CFLAGS += -Wno-address

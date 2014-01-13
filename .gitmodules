@@ -1,0 +1,15 @@
+[submodule "ext/toolchain"]
+	path = ext/toolchain
+	url = https://github.com/SESA/EbbRT-Toolchain.git
+[submodule "ext/acpica"]
+	path = ext/acpica
+	url = https://github.com/SESA/EbbRT-ACPICA.git
+[submodule "ext/lwip"]
+	path = ext/lwip
+	url = https://github.com/SESA/EbbRT-lwip.git
+[submodule "ext/tbb"]
+	path = ext/tbb
+	url = https://github.com/SESA/EbbRT-tbb
+[submodule "ext/boost"]
+	path = ext/boost
+	url = https://github.com/SESA/EbbRT-boost
