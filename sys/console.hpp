@@ -1,7 +1,5 @@
 #pragma once
 namespace ebbrt {
-namespace console {
-  void init() noexcept;
-  void write(const char *str) noexcept;
-}
+void console_init() noexcept;
+void console_write(const char* str) noexcept;
 }

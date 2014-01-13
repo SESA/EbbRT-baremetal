@@ -5,7 +5,6 @@
 #include <sys/spinlock.hpp>
 
 namespace ebbrt {
-namespace console {
 constexpr uint16_t PORT = 0x3f8;
 /* when DLAB = 0 */
 constexpr uint16_t DATA_REG = 0;
@@ -27,7 +26,7 @@ namespace {
 explicitly_constructed<spinlock> console_lock;
 }
 
-void init() {
+void console_init() {
   out8(PORT + INT_ENABLE, 0); // disable interrupts
 
   out8(PORT + LINE_CNTL_REG, LINE_CNTL_REG_DLAB); // enable dlab
@@ -41,18 +40,19 @@ void init() {
   console_lock.construct();
 }
 
+namespace {
 void write_locked(char c) {
   while (!(in8(PORT + LINE_STATUS_REG) & LINE_STATUS_REG_THR_EMPTY))
     ;
 
   out8(PORT + DATA_REG, c);
 }
+}
 
-void write(const char *str) {
+void console_write(const char *str) {
   std::lock_guard<spinlock> lock(*console_lock);
   while (*str != '\0') {
     write_locked(*str++);
   }
-}
 }
 }

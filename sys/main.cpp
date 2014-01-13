@@ -39,13 +39,13 @@ extern "C" void __register_frame(void*);
 
 extern "C"
     __attribute__((noreturn)) void ebbrt::kmain(MultibootInformation* mbi) {
-  console::init();
+  console_init();
 
   /* If by chance we reboot back into the kernel, panic */
   kbugon(started_once, "EbbRT reboot detected... aborting!\n");
   started_once = true;
 
-  kprintf("EbbRT Copyright 2013 SESA Developers\n");
+  kprintf("EbbRT Copyright 2013-2014 SESA Developers\n");
 
   idt_init();
   cpuid_init();

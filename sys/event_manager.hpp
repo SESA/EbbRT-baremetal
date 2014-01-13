@@ -43,6 +43,5 @@ class EventManager {
   uint8_t AllocateVector(std::function<void()> func);
 };
 
-constexpr auto event_manager = EbbRef<EventManager> { event_manager_id }
-;
+constexpr auto event_manager = EbbRef<EventManager>(event_manager_id);
 }

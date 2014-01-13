@@ -8,7 +8,7 @@ void kvprintf(const char *__restrict format, va_list va) {
   auto len = vsnprintf(nullptr, 0, format, va);
   char buffer[len + 1];
   vsnprintf(buffer, len + 1, format, va2);
-  console::write(buffer);
+  console_write(buffer);
 }
 void kprintf(const char *__restrict format, ...) {
   va_list ap;
