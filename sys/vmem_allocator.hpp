@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <memory>
 
 #include <sys/cache_aligned.hpp>
 #include <sys/idt.hpp>
@@ -38,7 +39,8 @@ public:
   static void Init();
   static VMemAllocator &HandleFault(EbbId id);
 
-  pfn_t Alloc(size_t npages, std::unique_ptr<page_fault_handler_t> pf_handler);
+  pfn_t Alloc(size_t npages,
+              std::unique_ptr<page_fault_handler_t> pf_handler = nullptr);
 };
 
 constexpr auto vmem_allocator = EbbRef<VMemAllocator>{ vmem_allocator_id };

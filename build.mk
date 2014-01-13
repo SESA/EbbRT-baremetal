@@ -1,8 +1,11 @@
-CXX = x86_64-pc-ebbrt-g++
-CC = x86_64-pc-ebbrt-gcc
+CXX = $(src)/ext/toolchain/bin/x86_64-pc-ebbrt-g++
+CC = $(src)/ext/toolchain/bin/x86_64-pc-ebbrt-gcc
 
 INCLUDES = -I $(src) -I $(src)/misc/include
 INCLUDES += -I $(src)/misc/acpica/source/include
+INCLUDES += -I $(src)/misc/lwip/include
+INCLUDES += -iquote $(src)/sys
+INCLUDES += -iquote $(src)/misc/lwip/include/ipv4/
 
 CPPFLAGS = -U ebbrt -MD -MT $@ -MP $(optflags) -Wall -Werror \
 	-fno-stack-protector $(INCLUDES)
@@ -36,36 +39,37 @@ q-build-s = $(call quiet, $(build-s), AS $@)
 objects = sys/acpi.o
 objects += sys/apic.o
 objects += sys/boot.o
+objects += sys/clock.o
 objects += sys/cpu.o
 objects += sys/cpuid.o
 objects += sys/debug.o
 objects += sys/e820.o
 objects += sys/early_page_allocator.o
 objects += sys/ebb_allocator.o
-# objects += sys/event.o
 objects += sys/event_manager.o
 objects += sys/idt.o
 objects += sys/isr.o
 objects += sys/local_id_map.o
 objects += sys/main.o
 objects += sys/mem_map.o
-#objects += sys/multiboot.o
+objects += sys/net.o
 objects += sys/numa.o
 objects += sys/page_allocator.o
-# objects += sys/pci.o
-#objects += sys/pmem.o
+objects += sys/pci.o
 #objects += sys/power.o
 objects += sys/slab_allocator.o
 objects += sys/smp.o
 objects += sys/stack.o
+objects += sys/timer.o
 objects += sys/tls.o
 objects += sys/trans.o
 objects += sys/UART_8250.o
-# objects += sys/virtio-net.o
+objects += sys/virtio_net.o
 objects += sys/vmem.o
 objects += sys/vmem_allocator.o
 objects += $(acpi_objects)
 objects += $(tbb_objects)
+objects += $(lwip_objects)
 
 tbb_sources := $(shell find $(src)/misc/tbb -type f -name '*.cpp')
 tbb_objects = $(patsubst $(src)/%.cpp, %.o, $(tbb_sources))
@@ -77,6 +81,11 @@ acpi_objects = $(patsubst $(src)/%.c, %.o, $(acpi_sources))
 
 $(acpi_objects): CFLAGS += -fno-strict-aliasing -Wno-strict-aliasing \
 	-Wno-unused-but-set-variable -DACPI_LIBRARY
+
+lwip_sources := $(filter-out %icmp6.c %inet6.c %ip6_addr.c %ip6.c,$(shell find $(src)/misc/lwip -type f -name '*.c'))
+lwip_objects = $(patsubst $(src)/%.c, %.o, $(lwip_sources))
+
+$(lwip_objects): CFLAGS += -Wno-address
 
 runtime_objects = sys/newlib.o sys/gthread.o sys/runtime.o
 

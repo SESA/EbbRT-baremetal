@@ -18,6 +18,7 @@ void ebbrt::disable_pic() {
 }
 
 const constexpr uint32_t MSR_X2APIC_IDR = 0x802;
+const constexpr uint32_t MSR_X2APIC_EOI = 0x80b;
 const constexpr uint32_t MSR_X2APIC_SVR = 0x80f;
 const constexpr uint32_t MSR_X2APIC_ICR = 0x830;
 
@@ -41,4 +42,9 @@ void ebbrt::apic_ipi(uint8_t apic_id, uint8_t vector, bool level,
 
 uint32_t ebbrt::apic_get_id() {
   return rdmsr(MSR_X2APIC_IDR);
+}
+
+void ebbrt::apic_eoi() {
+  //TODO: use KVM pv eoi
+  wrmsr(MSR_X2APIC_EOI, 0);
 }

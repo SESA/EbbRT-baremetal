@@ -151,7 +151,8 @@ class cpu {
   static char boot_interrupt_stack[PAGE_SIZE];
   friend void numa_init();
   void set_nid(nid_t nid) { nid_ = nid; }
-
+  friend class EventManager;
+  void set_event_stack(uintptr_t top_of_stack);
 public:
   cpu(size_t index, uint8_t acpi_id, uint8_t apic_id)
       : index_{ index }, acpi_id_{ acpi_id }, apic_id_{ apic_id } {}
@@ -200,5 +201,11 @@ inline void wrmsr(uint32_t index, uint64_t data) {
   uint32_t low = data;
   uint32_t high = data >> 32;
   asm volatile("wrmsr" : : "c"(index), "a"(low), "d"(high));
+}
+
+inline uint64_t rdtsc() {
+  uint32_t hi, lo;
+  asm volatile("rdtsc" : "=a"(lo), "=d"(hi));
+  return ((uint64_t)lo) | (((uint64_t)hi) << 32);
 }
 }

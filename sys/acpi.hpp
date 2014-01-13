@@ -1,5 +1,5 @@
 #pragma once
 
 namespace ebbrt {
-void acpi_boot_init();
+  void acpi_boot_init();
 }

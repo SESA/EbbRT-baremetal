@@ -31,19 +31,21 @@ struct cpuid_bit {
   uint32_t leaf;
   uint8_t reg;
   uint32_t bit;
-  bool cpuid_features_t::*flag;
-  vendor_id_t *vendor_id;
+  bool cpuid_features_t::* flag;
+  vendor_id_t* vendor_id;
 };
 
-cpuid_bit cpuid_bits[] = { { 1, 2, 21, &cpuid_features_t::x2apic },
-                           { 0x40000001,                    0,             6,
-                             &cpuid_features_t::kvm_pv_eoi, &kvm_vendor_id }, };
+cpuid_bit cpuid_bits[] = {
+  { 1, 2, 21, &cpuid_features_t::x2apic },
+  { 0x40000001, 0, 6, &cpuid_features_t::kvm_pv_eoi, &kvm_vendor_id },
+  { 0x40000001, 0, 3, &cpuid_features_t::kvm_clocksource2, &kvm_vendor_id }
+};
 
 constexpr size_t nr_cpuid_bits = sizeof(cpuid_bits) / sizeof(cpuid_bit);
 
 void ebbrt::cpuid_init() {
   for (size_t i = 0; i < nr_cpuid_bits; ++i) {
-    const auto &bit = cpuid_bits[i];
+    const auto& bit = cpuid_bits[i];
     auto vals = cpuid(bit.leaf & 0xf0000000);
     if (bit.vendor_id) {
       if (vals.ebx != bit.vendor_id->ebx || vals.ecx != bit.vendor_id->ecx ||
@@ -53,7 +55,7 @@ void ebbrt::cpuid_init() {
     }
     if ((bit.leaf & 0xf0000000) == 0x40000000 &&
         bit.vendor_id == &kvm_vendor_id && vals.eax == 0) {
-      vals.eax = 0x40000001; // kvm bug workaround
+      vals.eax = 0x40000001;  // kvm bug workaround
     }
     if (bit.leaf > vals.eax) {
       continue;

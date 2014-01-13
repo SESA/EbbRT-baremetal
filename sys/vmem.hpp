@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include <sys/pfn.hpp>
+
 namespace ebbrt {
 class pte {
   uint64_t raw_;

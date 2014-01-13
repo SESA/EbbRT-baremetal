@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include <sys/clock.hpp>
 #include <sys/cpu.hpp>
 #include <sys/event_manager.hpp>
 #include <sys/page_allocator.hpp>
@@ -56,9 +57,10 @@ extern "C" __attribute__((noreturn)) void ebbrt::smp_main() {
   vmem_ap_init(cpu_index);
   trans_ap_init(cpu_index);
   tls_ap_init(cpu_index);
+  clock_ap_init();
 
   cpu_it->init();
 
   event_manager->SpawnLocal([]() { smp_barrier->wait(); });
-  event_manager->StartLoop();
+  event_manager->StartProcessingEvents();
 }

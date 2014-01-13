@@ -25,3 +25,7 @@ void cpu::init() {
   gdt_.load();
   idt_load();
 }
+
+void cpu::set_event_stack(uintptr_t top_of_stack) {
+  atss_.tss.set_ist_entry(2, top_of_stack);
+}

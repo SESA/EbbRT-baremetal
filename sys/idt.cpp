@@ -1,6 +1,7 @@
 #include <cinttypes>
 
 #include <sys/debug.hpp>
+#include <sys/event_manager.hpp>
 #include <sys/idt.hpp>
 #include <sys/priority.hpp>
 
@@ -101,8 +102,8 @@ void idt_init() {
   }
 }
 
-extern "C" void event_interrupt(int num) {
-  kabort("Unhandled event %d\n", num);
+extern "C" __attribute__((noreturn)) void event_interrupt(int num) {
+  event_manager->ProcessInterrupt(num);
 }
 
 void print_exception_frame(exception_frame *ef) {

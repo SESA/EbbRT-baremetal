@@ -10,13 +10,13 @@
 
 using namespace ebbrt;
 
-typedef boost::container::flat_map<size_t, EventManager *> rep_map_t;
+typedef boost::container::flat_map<size_t, EventManager*> rep_map_t;
 
 void EventManager::Init() {
   local_id_map->insert(std::make_pair(event_manager_id, rep_map_t()));
 }
 
-EventManager &EventManager::HandleFault(EbbId id) {
+EventManager& EventManager::HandleFault(EbbId id) {
   kassert(id == event_manager_id);
   {
     // Acquire read only to find rep
@@ -41,21 +41,21 @@ EventManager &EventManager::HandleFault(EbbId id) {
 }
 
 namespace {
-const constexpr size_t STACK_NPAGES = 2048; // 8 MB stack
+const constexpr size_t STACK_NPAGES = 2048;  // 8 MB stack
 }
 
 class event_stack_fault_handler : public VMemAllocator::page_fault_handler_t {
   std::unordered_map<pfn_t, pfn_t> mappings_;
 
-public:
+ public:
   event_stack_fault_handler() = default;
-  event_stack_fault_handler(const event_stack_fault_handler &) = delete;
-  event_stack_fault_handler &operator=(const event_stack_fault_handler &) =
+  event_stack_fault_handler(const event_stack_fault_handler&) = delete;
+  event_stack_fault_handler& operator=(const event_stack_fault_handler&) =
       delete;
   ~event_stack_fault_handler() {
     kbugon(!mappings_.empty(), "Free stack pages!\n");
   }
-  void handle_fault(exception_frame *ef, uintptr_t faulted_address) override {
+  void handle_fault(exception_frame* ef, uintptr_t faulted_address) override {
     auto page = pfn_down(faulted_address);
     auto it = mappings_.find(page);
     if (it == mappings_.end()) {
@@ -80,39 +80,80 @@ uintptr_t EventManager::EventContext::top_of_stack() const {
   return pfn_to_addr(stack_ + STACK_NPAGES);
 }
 
-extern "C" __attribute__((noreturn)) void
-switch_stack(uintptr_t first_param, uintptr_t stack, void (*func)(uintptr_t));
+extern "C" __attribute__((noreturn)) void switch_stack(uintptr_t first_param,
+                                                       uintptr_t stack,
+                                                       void (*func)(uintptr_t));
 
-void EventManager::StartLoop() {
+void EventManager::StartProcessingEvents() {
   auto stack_top = active_context_.top_of_stack();
-  switch_stack(reinterpret_cast<uintptr_t>(this), stack_top, CallLoop);
+  my_cpu().set_event_stack(stack_top);
+  switch_stack(reinterpret_cast<uintptr_t>(this), stack_top, CallProcess);
 }
 
-void EventManager::CallLoop(uintptr_t mgr) {
-  auto pmgr = reinterpret_cast<EventManager *>(mgr);
-  pmgr->Loop();
+void EventManager::CallProcess(uintptr_t mgr) {
+  auto pmgr = reinterpret_cast<EventManager*>(mgr);
+  pmgr->Process();
 }
 
-void EventManager::Loop() {
-  while (1) {
-    if (!tasks_.empty()) {
-      auto f = std::move(tasks_.top());
-      tasks_.pop();
-      try {
-        f();
-      }
-      catch (std::exception &e) {
-        kabort("Unhandled exception caught: %s\n", e.what());
-      }
-      catch (...) {
-        kabort("Unhandled exception caught!\n");
-      }
-    } else {
-      asm volatile("hlt");
+namespace {
+  void invoke_function(std::function<void()>& f) {
+    try {
+      f();
+    }
+    catch (std::exception & e) {
+      kabort("Unhandled exception caught: %s\n", e.what());
+    }
+    catch (...) {
+      kabort("Unhandled exception caught!\n");
     }
   }
 }
 
+void EventManager::Process() {
+//process an interrupt without halting
+//the sti instruction starts processing interrupts *after* the next
+//instruction is executed (to allow for a halt for example). The nop gives us
+//a one instruction window to process an interrupt (before the cli)
+process:
+  asm volatile("sti;"
+               "nop;"
+               "cli;");
+  //If an interrupt was processed then we would not reach this code (the
+  //interrupt does not return here but instead to the top of this function)
+
+  if (!tasks_.empty()) {
+    auto f = std::move(tasks_.top());
+    tasks_.pop();
+    invoke_function(f);
+    //if we had a task to execute, then we go to the top again
+    goto process;
+  }
+
+  //We only reach here if we had no interrupts to process or tasks to run. We
+  //halt until an interrupt wakes us
+  asm volatile("sti;"
+               "hlt;");
+  kabort("Woke up from halt?!?!");
+}
+
+EventManager::EventManager() : vector_idx_(32) {}
+
 void EventManager::SpawnLocal(std::function<void()> func) {
   tasks_.emplace(std::move(func));
+}
+
+uint8_t EventManager::AllocateVector(std::function<void()> func) {
+  auto vec = vector_idx_.fetch_add(1, std::memory_order_relaxed);
+  vector_map_.emplace(vec, std::move(func));
+  return vec;
+}
+
+void EventManager::ProcessInterrupt(int num) {
+  apic_eoi();
+  auto it = vector_map_.find(num);
+  if (it != vector_map_.end()) {
+    auto& f = it->second;
+    invoke_function(f);
+  }
+  Process();
 }

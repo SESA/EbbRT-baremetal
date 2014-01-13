@@ -40,6 +40,8 @@ enum : EbbId {
   ebb_allocator_id,
   event_manager_id,
   vmem_allocator_id,
+  apic_timer_id,
+  network_manager_id,
   FIRST_FREE_ID
 };
 
