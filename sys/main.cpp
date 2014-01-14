@@ -109,7 +109,8 @@ extern "C"
     pci_init();
     pci_register_probe(virtio_net_driver::probe);
     pci_load_drivers();
-    kprintf("Finished\n");
+    network_manager->AcquireIPAddress();
+    kprintf("System initialization complete\n");
   });
 
   event_manager->StartProcessingEvents();

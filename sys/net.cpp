@@ -40,6 +40,12 @@ NetworkManager::Interface& NetworkManager::NewInterface(
   return interfaces_[interfaces_.size() - 1];
 }
 
+void NetworkManager::AcquireIPAddress() {
+  kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
+  netif_set_default(&interfaces_[0].netif_);
+  dhcp_start(&interfaces_[0].netif_);
+}
+
 namespace {
 err_t eth_output(struct netif* netif, struct pbuf* p) {
   auto itf = static_cast<NetworkManager::Interface*>(netif->state);
@@ -107,11 +113,7 @@ NetworkManager::Interface::Interface(EthernetDevice& ether_dev, size_t idx)
                 ethernet_input) == nullptr) {
     throw std::runtime_error("Failed to create network interface");
   }
-  if (idx == 0)
-    netif_set_default(&netif_);
-
   netif_set_status_callback(&netif_, status_callback);
-  dhcp_start(&netif_);
 }
 
 const std::array<char, 6>& NetworkManager::Interface::MacAddress() {

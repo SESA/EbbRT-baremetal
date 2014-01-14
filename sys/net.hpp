@@ -5,6 +5,7 @@
 #include <lwip/netif.h>
 
 #include <sys/buffer.hpp>
+#include <sys/main.hpp>
 #include <sys/trans.hpp>
 
 namespace ebbrt {
@@ -24,6 +25,7 @@ class NetworkManager {
     EthernetDevice& ether_dev_;
     struct netif netif_;
     size_t idx_;
+    friend class NetworkManager;
 
    public:
     Interface(EthernetDevice& ether_dev, size_t idx);
@@ -35,8 +37,10 @@ class NetworkManager {
   Interface& NewInterface(EthernetDevice& ether_dev);
 
  private:
+  friend void ebbrt::kmain(ebbrt::MultibootInformation* mbi);
+  void AcquireIPAddress();
+
   std::vector<Interface> interfaces_;
 };
-constexpr auto network_manager = EbbRef<NetworkManager> { network_manager_id }
-;
+constexpr auto network_manager = EbbRef<NetworkManager>(network_manager_id);
 }
