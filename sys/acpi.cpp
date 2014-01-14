@@ -161,6 +161,11 @@ void parse_srat(const ACPI_TABLE_SRAT *srat) {
         kbugon(cpu_affinity->ApicId >= MAX_LOCAL_APIC,
                "Apic Id exceeds MAX_LOCAL_APIC");
         apic_to_node_map[cpu_affinity->ApicId] = node;
+        auto cpu_it = std::find_if(cpus.begin(), cpus.end(),[=](const cpu& c) {
+            return c.get_apic_id() == cpu_affinity->ApicId;
+          });
+        kbugon(cpu_it == cpus.end(), "Cannot find cpu listed in SRAT");
+        cpu_it->set_nid(node);
       }
       offset += sizeof(ACPI_SRAT_CPU_AFFINITY);
       break;

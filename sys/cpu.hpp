@@ -149,8 +149,6 @@ class cpu {
   nid_t nid_;
 
   static char boot_interrupt_stack[PAGE_SIZE];
-  friend void numa_init();
-  void set_nid(nid_t nid) { nid_ = nid; }
   friend class EventManager;
   void set_event_stack(uintptr_t top_of_stack);
 public:
@@ -165,6 +163,7 @@ public:
 
   void set_acpi_id(uint8_t id) { acpi_id_ = id; }
   void set_apic_id(uint8_t id) { apic_id_ = id; }
+  void set_nid(nid_t nid) { nid_ = nid; }
 };
 
 const constexpr size_t MAX_NUM_CPUS = 256;
