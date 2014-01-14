@@ -70,22 +70,12 @@ class event_stack_fault_handler : public VMemAllocator::page_fault_handler_t {
   }
 };
 
-EventManager::EventContext::EventContext() {
-  auto fault_handler = new event_stack_fault_handler;
-  stack_ = vmem_allocator->Alloc(
-      STACK_NPAGES, std::unique_ptr<event_stack_fault_handler>(fault_handler));
-}
-
-uintptr_t EventManager::EventContext::top_of_stack() const {
-  return pfn_to_addr(stack_ + STACK_NPAGES);
-}
-
 extern "C" __attribute__((noreturn)) void switch_stack(uintptr_t first_param,
                                                        uintptr_t stack,
                                                        void (*func)(uintptr_t));
 
 void EventManager::StartProcessingEvents() {
-  auto stack_top = active_context_.top_of_stack();
+  auto stack_top = pfn_to_addr(stack_ + STACK_NPAGES);
   my_cpu().set_event_stack(stack_top);
   switch_stack(reinterpret_cast<uintptr_t>(this), stack_top, CallProcess);
 }
@@ -96,17 +86,17 @@ void EventManager::CallProcess(uintptr_t mgr) {
 }
 
 namespace {
-  void invoke_function(std::function<void()>& f) {
-    try {
-      f();
-    }
-    catch (std::exception & e) {
-      kabort("Unhandled exception caught: %s\n", e.what());
-    }
-    catch (...) {
-      kabort("Unhandled exception caught!\n");
-    }
+void invoke_function(std::function<void()>& f) {
+  try {
+    f();
   }
+  catch (std::exception & e) {
+    kabort("Unhandled exception caught: %s\n", e.what());
+  }
+  catch (...) {
+    kabort("Unhandled exception caught!\n");
+  }
+}
 }
 
 void EventManager::Process() {
@@ -136,10 +126,45 @@ process:
   kabort("Woke up from halt?!?!");
 }
 
-EventManager::EventManager() : vector_idx_(32) {}
+namespace {
+pfn_t allocate_stack() {
+  auto fault_handler = new event_stack_fault_handler;
+  return vmem_allocator->Alloc(
+      STACK_NPAGES, std::unique_ptr<event_stack_fault_handler>(fault_handler));
+}
+}
+
+EventManager::EventManager() : vector_idx_(32) { stack_ = allocate_stack(); }
 
 void EventManager::SpawnLocal(std::function<void()> func) {
   tasks_.emplace(std::move(func));
+}
+
+extern "C" void save_context_and_switch(uintptr_t first_param,
+                                        uintptr_t stack,
+                                        void (*func)(uintptr_t),
+                                        EventManager::EventContext& context);
+
+void EventManager::SaveContext(EventContext& context) {
+  context.stack = stack_;
+  stack_ = allocate_stack();
+  auto stack_top = pfn_to_addr(stack_ + STACK_NPAGES);
+  my_cpu().set_event_stack(stack_top);
+  save_context_and_switch(
+      reinterpret_cast<uintptr_t>(this), stack_top, CallProcess, context);
+}
+
+extern "C" void activate_context_and_return(
+    const EventManager::EventContext& context);
+
+void EventManager::ActivateContext(const EventContext& context) {
+  SpawnLocal([this, context]() {
+    kprintf("TODO: free existing stack\n");
+    stack_ = context.stack;
+    auto stack_top = pfn_to_addr(context.stack + STACK_NPAGES);
+    my_cpu().set_event_stack(stack_top);
+    activate_context_and_return(context);
+  });
 }
 
 uint8_t EventManager::AllocateVector(std::function<void()> func) {

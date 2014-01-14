@@ -21,14 +21,7 @@ class EventManager {
   friend void ebbrt::event_interrupt(int num);
   void ProcessInterrupt(int num) __attribute__((noreturn));
 
-  class EventContext {
-    pfn_t stack_;
-
-   public:
-    EventContext();
-    uintptr_t top_of_stack() const;
-  };
-  EventContext active_context_;
+  pfn_t stack_;
   std::stack<std::function<void()> > tasks_;
   std::unordered_map<uint8_t, std::function<void()> > vector_map_;
   std::atomic<uint8_t> vector_idx_;
@@ -40,6 +33,18 @@ class EventManager {
   EventManager();
 
   void SpawnLocal(std::function<void()> func);
+  struct EventContext {
+    uint64_t rbx;
+    uint64_t rsp;
+    uint64_t rbp;
+    uint64_t r12;
+    uint64_t r13;
+    uint64_t r14;
+    uint64_t r15;
+    pfn_t stack;
+  };
+  void SaveContext(EventContext& context);
+  void ActivateContext(const EventContext& context);
   uint8_t AllocateVector(std::function<void()> func);
 };
 

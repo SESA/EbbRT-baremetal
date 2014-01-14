@@ -10,6 +10,7 @@
 #include <sys/arch/cc.h>
 #include <sys/clock.hpp>
 #include <sys/debug.hpp>
+#include <sys/event_manager.hpp>
 #include <sys/explicitly_constructed.hpp>
 #include <sys/net.hpp>
 #include <sys/timer.hpp>
@@ -40,10 +41,16 @@ NetworkManager::Interface& NetworkManager::NewInterface(
   return interfaces_[interfaces_.size() - 1];
 }
 
+namespace {
+  EventManager::EventContext* context;
+}
+
 void NetworkManager::AcquireIPAddress() {
   kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
   netif_set_default(&interfaces_[0].netif_);
   dhcp_start(&interfaces_[0].netif_);
+  context = new EventManager::EventContext;
+  event_manager->SaveContext(*context);
 }
 
 namespace {
@@ -93,12 +100,15 @@ err_t eth_init(struct netif* netif) {
   netif->flags |= NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
   return ERR_OK;
 }
+
 void status_callback(struct netif* netif) {
   kprintf("IP address: %" U16_F ".%" U16_F ".%" U16_F ".%" U16_F "\n",
           ip4_addr1_16(&netif->ip_addr),
           ip4_addr2_16(&netif->ip_addr),
           ip4_addr3_16(&netif->ip_addr),
           ip4_addr4_16(&netif->ip_addr));
+  event_manager->ActivateContext(*context);
+  delete context;
 }
 }
 
