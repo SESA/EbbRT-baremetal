@@ -126,15 +126,18 @@ process:
   kabort("Woke up from halt?!?!");
 }
 
-namespace {
-pfn_t allocate_stack() {
+pfn_t EventManager::AllocateStack() {
+  if (!free_stacks_.empty()) {
+    auto ret = free_stacks_.top();
+    free_stacks_.pop();
+    return ret;
+  }
   auto fault_handler = new event_stack_fault_handler;
   return vmem_allocator->Alloc(
       STACK_NPAGES, std::unique_ptr<event_stack_fault_handler>(fault_handler));
 }
-}
 
-EventManager::EventManager() : vector_idx_(32) { stack_ = allocate_stack(); }
+EventManager::EventManager() : vector_idx_(32) { stack_ = AllocateStack(); }
 
 void EventManager::SpawnLocal(std::function<void()> func) {
   tasks_.emplace(std::move(func));
@@ -147,7 +150,7 @@ extern "C" void save_context_and_switch(uintptr_t first_param,
 
 void EventManager::SaveContext(EventContext& context) {
   context.stack = stack_;
-  stack_ = allocate_stack();
+  stack_ = AllocateStack();
   auto stack_top = pfn_to_addr(stack_ + STACK_NPAGES);
   my_cpu().set_event_stack(stack_top);
   save_context_and_switch(
@@ -159,7 +162,7 @@ extern "C" void activate_context_and_return(
 
 void EventManager::ActivateContext(const EventContext& context) {
   SpawnLocal([this, context]() {
-    kprintf("TODO: free existing stack\n");
+    free_stacks_.push(stack_);
     stack_ = context.stack;
     auto stack_top = pfn_to_addr(context.stack + STACK_NPAGES);
     my_cpu().set_event_stack(stack_top);

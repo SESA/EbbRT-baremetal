@@ -21,7 +21,10 @@ class EventManager {
   friend void ebbrt::event_interrupt(int num);
   void ProcessInterrupt(int num) __attribute__((noreturn));
 
+  pfn_t AllocateStack();
+
   pfn_t stack_;
+  std::stack<pfn_t> free_stacks_;
   std::stack<std::function<void()> > tasks_;
   std::unordered_map<uint8_t, std::function<void()> > vector_map_;
   std::atomic<uint8_t> vector_idx_;
