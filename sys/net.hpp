@@ -35,6 +35,22 @@ class NetworkManager {
   };
 
   Interface& NewInterface(EthernetDevice& ether_dev);
+  class Tcp_pcb {
+    struct tcp_pcb* pcb_;
+    std::function<void(Tcp_pcb)> accept_callback_;
+    std::function<void()> connect_callback_;
+
+    static err_t Accept_Handler(void *arg, struct tcp_pcb * newpcb, err_t err);
+    static err_t Connect_Handler(void *arg, struct tcp_pcb * pcb, err_t err);
+    Tcp_pcb(struct tcp_pcb *pcb);
+   public:
+    Tcp_pcb();
+    ~Tcp_pcb();
+    void Bind(uint16_t port);
+    void Listen();
+    void Accept(std::function<void(Tcp_pcb)> callback);
+    void Connect(struct ip_addr *ipaddr, uint16_t port, std::function<void()> callback);
+  };
 
  private:
   friend void ebbrt::kmain(ebbrt::MultibootInformation* mbi);

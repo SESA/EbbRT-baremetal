@@ -110,6 +110,13 @@ extern "C"
     pci_register_probe(virtio_net_driver::probe);
     pci_load_drivers();
     network_manager->AcquireIPAddress();
+    auto pcb = new NetworkManager::Tcp_pcb();
+    struct ip_addr addr;
+    IP4_ADDR(&addr, 10, 128, 128, 1);
+    pcb->Connect(&addr, 20345,
+                 []() {
+      kprintf("connected\n");
+    });
     kprintf("System initialization complete\n");
   });
 

@@ -4,6 +4,7 @@
 #include <lwip/init.h>
 #include <lwip/stats.h>
 #include <lwip/sys.h>
+#include <lwip/tcp.h>
 #include <lwip/timers.h>
 #include <netif/etharp.h>
 
@@ -41,9 +42,7 @@ NetworkManager::Interface& NetworkManager::NewInterface(
   return interfaces_[interfaces_.size() - 1];
 }
 
-namespace {
-  EventManager::EventContext* context;
-}
+namespace { EventManager::EventContext* context; }
 
 void NetworkManager::AcquireIPAddress() {
   kbugon(interfaces_.size() == 0, "No network interfaces identified!\n");
@@ -171,11 +170,76 @@ extern "C" void lwip_assert(const char* fmt, ...) {
   kabort();
 }
 
-extern "C" uint32_t lwip_rand() {
-  return rdtsc() % 0xFFFFFFFF;
-}
+extern "C" uint32_t lwip_rand() { return rdtsc() % 0xFFFFFFFF; }
 
 u32_t sys_now() {
   return std::chrono::duration_cast<std::chrono::milliseconds>(clock_time())
       .count();
+}
+
+NetworkManager::Tcp_pcb::Tcp_pcb() {
+  pcb_ = tcp_new();
+  if (pcb_ == nullptr) {
+    throw std::bad_alloc();
+  }
+  tcp_arg(pcb_, static_cast<void*>(this));
+}
+
+NetworkManager::Tcp_pcb::Tcp_pcb(struct tcp_pcb* pcb) : pcb_(pcb) {
+  tcp_arg(pcb_, static_cast<void*>(this));
+}
+
+NetworkManager::Tcp_pcb::~Tcp_pcb() {
+  if (pcb_ != nullptr)
+    tcp_abort(pcb_);
+}
+
+void NetworkManager::Tcp_pcb::Bind(uint16_t port) {
+  auto ret = tcp_bind(pcb_, IP_ADDR_ANY, port);
+  if (ret != ERR_OK) {
+    throw std::runtime_error("Bind failed\n");
+  }
+}
+
+void NetworkManager::Tcp_pcb::Listen() {
+  auto pcb = tcp_listen(pcb_);
+  if (pcb == NULL) {
+    throw std::bad_alloc();
+  }
+  pcb_ = pcb;
+}
+
+void NetworkManager::Tcp_pcb::Accept(std::function<void(Tcp_pcb)> callback) {
+  accept_callback_ = std::move(callback);
+  tcp_accept(pcb_, Accept_Handler);
+}
+
+void NetworkManager::Tcp_pcb::Connect(struct ip_addr* ip,
+                                      uint16_t port,
+                                      std::function<void()> callback) {
+  connect_callback_ = std::move(callback);
+  auto err = tcp_connect(pcb_, ip, port, Connect_Handler);
+  if (err != ERR_OK) {
+    throw std::bad_alloc();
+  }
+}
+
+err_t NetworkManager::Tcp_pcb::Accept_Handler(void* arg,
+                                              struct tcp_pcb* newpcb,
+                                              err_t err) {
+  kassert(err == ERR_OK);
+  auto listening_pcb = static_cast<Tcp_pcb*>(arg);
+  listening_pcb->accept_callback_(Tcp_pcb(newpcb));
+  tcp_accepted(listening_pcb->pcb_);
+  return ERR_OK;
+}
+
+err_t NetworkManager::Tcp_pcb::Connect_Handler(void* arg,
+                                               struct tcp_pcb* pcb,
+                                               err_t err) {
+  kassert(err == ERR_OK);
+  auto pcb_s = static_cast<Tcp_pcb*>(arg);
+  kassert(pcb_s->pcb_ == pcb);
+  pcb_s->connect_callback_();
+  return ERR_OK;
 }
