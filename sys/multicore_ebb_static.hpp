@@ -22,6 +22,7 @@ template <typename T> class multicore_ebb_static {
       auto rep_map = boost::any_cast<rep_map_t>(accessor->second);
       auto it = rep_map.find(my_cpu());
       if (it != rep_map.end()) {
+        cache_ref(id, *it->second);
         return *it->second;
       }
     }
