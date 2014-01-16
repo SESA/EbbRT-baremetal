@@ -61,6 +61,7 @@ boot_stack_top = .
 .text
 .globl start32
 start32:
+  // ebx holds pointer to Multiboot information struct
 	mov %ebx, %edi
 	//enable PAE and SSE
 	mov $0x628, %eax
@@ -84,17 +85,21 @@ start32:
 	ljmp $8, $start64
 .code64
 start64:
+  // We are now executing 64 bit code
 	.cfi_startproc simple
 	.cfi_def_cfa %rsp, 0
 	.cfi_undefined %rip
+  // reset segment registers
 	mov $0x0, %ax
 	mov %ax, %es
 	mov %ax, %ss
 	mov %ax, %ds
 	mov %ax, %fs
 	mov %ax, %gs
+  // load static boot stack
 	lea boot_stack_top, %rsp
-	call kmain
+  // jump into C code
+	call kmain 
 	.cfi_endproc
 
 #include <sys/smp.hpp>
